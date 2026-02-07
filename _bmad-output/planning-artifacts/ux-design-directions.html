@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alignment Journal — Reviewer Workspace Design Directions</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --font-ui: 'Satoshi', -apple-system, sans-serif;
+    --font-article: 'Newsreader', Georgia, serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --bg: hsl(210, 20%, 98%);
+    --fg: hsl(220, 25%, 10%);
+    --surface: hsl(210, 18%, 96%);
+    --surface-elevated: hsl(0, 0%, 100%);
+    --border: hsl(220, 13%, 91%);
+    --border-subtle: hsl(220, 13%, 94%);
+    --accent: hsl(230, 65%, 52%);
+    --accent-hover: hsl(230, 65%, 45%);
+    --accent-muted: hsl(230, 40%, 95%);
+    --accent-fg: hsl(0, 0%, 100%);
+    --muted: hsl(220, 12%, 38%);
+    --muted-subtle: hsl(220, 10%, 46%);
+    --green: hsl(152, 60%, 40%);
+    --amber: hsl(38, 92%, 50%);
+    --red: hsl(0, 72%, 51%);
+    --blue: hsl(217, 91%, 60%);
+    --gray: hsl(220, 10%, 60%);
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 9999px;
+
+    --shadow-xs: 0 1px 2px hsl(220 20% 10% / 0.05);
+    --shadow-sm: 0 1px 3px hsl(220 20% 10% / 0.08);
+    --shadow-md: 0 4px 6px -1px hsl(220 20% 10% / 0.08);
+    --shadow-lg: 0 10px 15px -3px hsl(220 20% 10% / 0.08);
+  }
+
+  body {
+    font-family: var(--font-ui);
+    background: hsl(220, 15%, 95%);
+    color: var(--fg);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== Navigation ===== */
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: hsl(220, 25%, 10%);
+    color: white;
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 1px 3px hsl(0 0% 0% / 0.2);
+  }
+  .nav-brand {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: hsl(230, 80%, 75%);
+    white-space: nowrap;
+  }
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    justify-content: center;
+  }
+  .nav-tab {
+    padding: 8px 20px;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: hsl(220, 15%, 65%);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    user-select: none;
+  }
+  .nav-tab:hover { color: white; background: hsl(220, 20%, 18%); }
+  .nav-tab.active {
+    color: white;
+    background: hsl(230, 65%, 52%);
+  }
+  .nav-hint {
+    font-size: 12px;
+    color: hsl(220, 15%, 50%);
+    white-space: nowrap;
+  }
+
+  /* ===== Direction containers ===== */
+  .direction {
+    display: none;
+    margin-top: 56px;
+    height: calc(100vh - 56px);
+    overflow: hidden;
+  }
+  .direction.active { display: flex; flex-direction: column; }
+
+  /* ===== DIRECTION A: Clean Divide ===== */
+  .dir-a .workspace-header {
+    background: var(--surface-elevated);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .dir-a .workspace-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .dir-a .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    border: none;
+    background: none;
+    font-family: var(--font-ui);
+  }
+  .dir-a .back-btn:hover { background: var(--surface); color: var(--fg); }
+  .dir-a .paper-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dir-a .workspace-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .dir-a .conf-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: hsl(152, 50%, 32%);
+    background: hsl(152, 50%, 95%);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid hsl(152, 40%, 88%);
+  }
+  .dir-a .conf-badge .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+  }
+  .dir-a .save-indicator {
+    font-size: 12px;
+    color: var(--muted-subtle);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .dir-a .save-indicator .check { color: var(--green); }
+
+  /* Split panels */
+  .dir-a .split-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  .dir-a .paper-panel {
+    flex: 0 0 55%;
+    overflow-y: auto;
+    background: var(--surface-elevated);
+    border-right: 1px solid var(--border);
+  }
+  .dir-a .paper-content {
+    max-width: 75ch;
+    margin: 0 auto;
+    padding: 48px 40px;
+    font-family: var(--font-article);
+  }
+  .dir-a .paper-content h1 {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+  .dir-a .paper-authors {
+    font-size: 15px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-style: italic;
+  }
+  .dir-a .paper-meta {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--muted-subtle);
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .dir-a .paper-abstract-label {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted-subtle);
+    margin-bottom: 8px;
+  }
+  .dir-a .paper-abstract {
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--fg);
+    margin-bottom: 32px;
+  }
+  .dir-a .paper-section-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+  .dir-a .paper-body {
+    font-size: 17px;
+    line-height: 1.7;
+    color: hsl(220, 15%, 20%);
+  }
+  .dir-a .paper-body p { margin-bottom: 16px; }
+
+  /* Review panel */
+  .dir-a .review-panel {
+    flex: 0 0 45%;
+    overflow-y: auto;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+  }
+  .dir-a .review-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-elevated);
+    padding: 0 20px;
+    flex-shrink: 0;
+  }
+  .dir-a .review-tab {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s ease;
+    margin-bottom: -1px;
+  }
+  .dir-a .review-tab:hover { color: var(--fg); }
+  .dir-a .review-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .dir-a .review-form {
+    flex: 1;
+    padding: 24px 20px;
+    overflow-y: auto;
+  }
+  .dir-a .review-section {
+    margin-bottom: 24px;
+  }
+  .dir-a .review-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .dir-a .review-section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dir-a .section-status {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+  }
+  .dir-a .section-status.complete {
+    color: hsl(152, 50%, 32%);
+    background: hsl(152, 50%, 95%);
+  }
+  .dir-a .section-status.in-progress {
+    color: hsl(230, 50%, 45%);
+    background: hsl(230, 40%, 95%);
+  }
+  .dir-a .section-status.empty {
+    color: var(--muted-subtle);
+    background: var(--surface);
+  }
+  .dir-a .review-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-family: var(--font-article);
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--fg);
+    background: var(--surface-elevated);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .dir-a .review-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px hsl(230 65% 52% / 0.1);
+  }
+  .dir-a .review-textarea::placeholder {
+    color: var(--muted-subtle);
+    font-style: italic;
+  }
+  .dir-a .review-textarea.filled {
+    border-color: hsl(152, 40%, 80%);
+  }
+
+  /* Payment footer */
+  .dir-a .payment-footer {
+    flex-shrink: 0;
+    background: var(--surface-elevated);
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+  }
+  .dir-a .payment-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  .dir-a .payment-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .dir-a .payment-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--fg);
+    letter-spacing: -0.02em;
+  }
+  .dir-a .payment-detail {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .dir-a .payment-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  .dir-a .payment-line-label { color: var(--muted); }
+  .dir-a .payment-line-value { font-weight: 500; }
+  .dir-a .payment-line-value.pending { color: var(--muted-subtle); font-style: italic; font-weight: 400; }
+  .dir-a .payment-line-value.bonus { color: var(--green); }
+
+  /* Resize handle */
+  .dir-a .resize-handle {
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    position: relative;
+    flex-shrink: 0;
+    margin: 0 -2px;
+    z-index: 10;
+  }
+  .dir-a .resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 32px;
+    border-radius: 2px;
+    background: var(--border);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .dir-a .resize-handle:hover::after { opacity: 1; }
+
+  /* ===== DIRECTION B: Immersive Scholar ===== */
+  .dir-b .workspace-header {
+    background: hsl(225, 20%, 16%);
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .dir-b .workspace-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .dir-b .back-btn {
+    color: hsl(220, 15%, 60%);
+    background: none;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    transition: all 0.15s ease;
+  }
+  .dir-b .back-btn:hover { color: white; background: hsl(225, 18%, 22%); }
+  .dir-b .paper-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: hsl(220, 15%, 80%);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dir-b .workspace-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dir-b .conf-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: hsl(152, 60%, 65%);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: hsl(152, 40%, 15%);
+    border: 1px solid hsl(152, 30%, 25%);
+  }
+  .dir-b .conf-badge .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: hsl(152, 60%, 55%);
+  }
+  .dir-b .save-indicator {
+    font-size: 11px;
+    color: hsl(220, 15%, 50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .dir-b .split-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  .dir-b .paper-panel {
+    flex: 0 0 58%;
+    overflow-y: auto;
+    background: hsl(40, 25%, 97%);
+  }
+  .dir-b .paper-content {
+    max-width: 72ch;
+    margin: 0 auto;
+    padding: 56px 48px;
+    font-family: var(--font-article);
+  }
+  .dir-b .paper-content h1 {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    color: hsl(220, 30%, 12%);
+    margin-bottom: 20px;
+  }
+  .dir-b .paper-authors {
+    font-size: 16px;
+    color: hsl(220, 12%, 38%);
+    font-style: italic;
+    margin-bottom: 6px;
+  }
+  .dir-b .paper-meta {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: hsl(220, 10%, 52%);
+    display: flex;
+    gap: 16px;
+    margin-bottom: 36px;
+    padding-bottom: 28px;
+    border-bottom: 2px solid hsl(40, 20%, 90%);
+  }
+  .dir-b .paper-abstract-label {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(230, 50%, 52%);
+    margin-bottom: 10px;
+  }
+  .dir-b .paper-abstract {
+    font-size: 17px;
+    line-height: 1.75;
+    color: hsl(220, 20%, 18%);
+    margin-bottom: 36px;
+    padding-left: 16px;
+    border-left: 3px solid hsl(230, 50%, 82%);
+  }
+  .dir-b .paper-section-title {
+    font-size: 21px;
+    font-weight: 600;
+    margin-top: 44px;
+    margin-bottom: 18px;
+    letter-spacing: -0.01em;
+    color: hsl(220, 25%, 15%);
+  }
+  .dir-b .paper-body {
+    font-size: 17px;
+    line-height: 1.75;
+    color: hsl(220, 15%, 22%);
+  }
+  .dir-b .paper-body p { margin-bottom: 18px; }
+
+  /* Review panel - darker, sidebar feel */
+  .dir-b .review-panel {
+    flex: 0 0 42%;
+    overflow-y: auto;
+    background: hsl(225, 18%, 14%);
+    color: hsl(220, 15%, 85%);
+    display: flex;
+    flex-direction: column;
+  }
+  .dir-b .review-tabs {
+    display: flex;
+    border-bottom: 1px solid hsl(225, 15%, 22%);
+    padding: 0 20px;
+    flex-shrink: 0;
+  }
+  .dir-b .review-tab {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: hsl(220, 15%, 50%);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s ease;
+    margin-bottom: -1px;
+  }
+  .dir-b .review-tab:hover { color: hsl(220, 15%, 80%); }
+  .dir-b .review-tab.active {
+    color: hsl(230, 80%, 75%);
+    border-bottom-color: hsl(230, 80%, 65%);
+  }
+  .dir-b .review-form {
+    flex: 1;
+    padding: 24px 20px;
+    overflow-y: auto;
+  }
+  .dir-b .review-section { margin-bottom: 24px; }
+  .dir-b .review-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .dir-b .review-section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: hsl(220, 15%, 80%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dir-b .section-status {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+  }
+  .dir-b .section-status.complete {
+    color: hsl(152, 60%, 65%);
+    background: hsl(152, 40%, 15%);
+  }
+  .dir-b .section-status.in-progress {
+    color: hsl(230, 80%, 75%);
+    background: hsl(230, 40%, 18%);
+  }
+  .dir-b .section-status.empty {
+    color: hsl(220, 10%, 45%);
+    background: hsl(225, 15%, 20%);
+  }
+  .dir-b .review-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px 16px;
+    border: 1px solid hsl(225, 15%, 25%);
+    border-radius: var(--radius-md);
+    font-family: var(--font-article);
+    font-size: 15px;
+    line-height: 1.65;
+    color: hsl(220, 15%, 90%);
+    background: hsl(225, 18%, 18%);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .dir-b .review-textarea:focus {
+    border-color: hsl(230, 70%, 60%);
+    box-shadow: 0 0 0 3px hsl(230 65% 52% / 0.2);
+  }
+  .dir-b .review-textarea::placeholder {
+    color: hsl(220, 10%, 40%);
+    font-style: italic;
+  }
+  .dir-b .review-textarea.filled {
+    border-color: hsl(152, 30%, 30%);
+  }
+
+  .dir-b .payment-footer {
+    flex-shrink: 0;
+    background: hsl(225, 20%, 12%);
+    border-top: 1px solid hsl(225, 15%, 22%);
+    padding: 14px 20px;
+  }
+  .dir-b .payment-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  .dir-b .payment-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: hsl(220, 15%, 50%);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .dir-b .payment-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: hsl(220, 15%, 90%);
+    letter-spacing: -0.02em;
+  }
+  .dir-b .payment-detail {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid hsl(225, 15%, 22%);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .dir-b .payment-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  .dir-b .payment-line-label { color: hsl(220, 10%, 50%); }
+  .dir-b .payment-line-value { font-weight: 500; color: hsl(220, 15%, 80%); }
+  .dir-b .payment-line-value.pending { color: hsl(220, 10%, 45%); font-style: italic; font-weight: 400; }
+  .dir-b .payment-line-value.bonus { color: hsl(152, 60%, 60%); }
+
+  .dir-b .resize-handle {
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    position: relative;
+    flex-shrink: 0;
+    margin: 0 -2px;
+    z-index: 10;
+  }
+  .dir-b .resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 32px;
+    border-radius: 2px;
+    background: hsl(225, 15%, 30%);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .dir-b .resize-handle:hover::after { opacity: 1; }
+
+  /* ===== DIRECTION C: Structured Clarity ===== */
+  .dir-c .workspace-header {
+    background: var(--surface-elevated);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: stretch;
+    flex-shrink: 0;
+    height: 52px;
+  }
+  .dir-c .workspace-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
+  }
+  .dir-c .back-btn {
+    color: var(--muted);
+    background: none;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    transition: all 0.15s ease;
+  }
+  .dir-c .back-btn:hover { background: var(--surface); color: var(--fg); }
+  .dir-c .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted-subtle);
+    min-width: 0;
+  }
+  .dir-c .breadcrumb-sep { color: var(--border); }
+  .dir-c .breadcrumb-current {
+    font-weight: 600;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dir-c .workspace-header-center {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+  .dir-c .header-tab {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .dir-c .header-tab:hover { color: var(--fg); }
+  .dir-c .header-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .dir-c .workspace-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dir-c .conf-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: hsl(152, 50%, 32%);
+    background: hsl(152, 50%, 95%);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid hsl(152, 40%, 88%);
+  }
+  .dir-c .conf-badge .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+  }
+  .dir-c .save-indicator {
+    font-size: 12px;
+    color: var(--muted-subtle);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .dir-c .save-indicator .check { color: var(--green); }
+
+  .dir-c .split-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  /* Paper panel with card elevation */
+  .dir-c .paper-panel {
+    flex: 0 0 56%;
+    overflow-y: auto;
+    padding: 20px 12px 20px 20px;
+  }
+  .dir-c .paper-card {
+    background: var(--surface-elevated);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-subtle);
+    padding: 48px 44px;
+    min-height: 100%;
+  }
+  .dir-c .paper-content {
+    max-width: 70ch;
+    margin: 0 auto;
+    font-family: var(--font-article);
+  }
+  .dir-c .paper-content h1 {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+  .dir-c .paper-authors {
+    font-size: 15px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-style: italic;
+  }
+  .dir-c .paper-meta {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--muted-subtle);
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .dir-c .paper-abstract-label {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .dir-c .paper-abstract {
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--fg);
+    margin-bottom: 32px;
+  }
+  .dir-c .paper-section-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+  .dir-c .paper-body {
+    font-size: 17px;
+    line-height: 1.7;
+    color: hsl(220, 15%, 20%);
+  }
+  .dir-c .paper-body p { margin-bottom: 16px; }
+
+  /* Review panel as card */
+  .dir-c .review-panel {
+    flex: 0 0 44%;
+    overflow-y: auto;
+    padding: 20px 20px 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .dir-c .review-card {
+    background: var(--surface-elevated);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .dir-c .review-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dir-c .review-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dir-c .progress-ring {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2.5px solid var(--border);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .dir-c .progress-ring::before {
+    content: '';
+    position: absolute;
+    inset: -2.5px;
+    border-radius: 50%;
+    border: 2.5px solid var(--accent);
+    clip-path: polygon(0 0, 100% 0, 100% 60%, 0 60%);
+  }
+  .dir-c .review-form {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .dir-c .review-section { margin-bottom: 20px; }
+  .dir-c .review-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .dir-c .review-section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dir-c .section-status {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+  }
+  .dir-c .section-status.complete {
+    color: hsl(152, 50%, 32%);
+    background: hsl(152, 50%, 95%);
+  }
+  .dir-c .section-status.in-progress {
+    color: hsl(230, 50%, 45%);
+    background: hsl(230, 40%, 95%);
+  }
+  .dir-c .section-status.empty {
+    color: var(--muted-subtle);
+    background: var(--surface);
+  }
+  .dir-c .review-textarea {
+    width: 100%;
+    min-height: 110px;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-family: var(--font-article);
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--fg);
+    background: var(--surface-elevated);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .dir-c .review-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px hsl(230 65% 52% / 0.1);
+  }
+  .dir-c .review-textarea::placeholder {
+    color: var(--muted-subtle);
+    font-style: italic;
+  }
+  .dir-c .review-textarea.filled { border-color: hsl(152, 40%, 80%); }
+
+  .dir-c .payment-card {
+    background: var(--surface-elevated);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-subtle);
+    padding: 16px 20px;
+    flex-shrink: 0;
+  }
+  .dir-c .payment-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  .dir-c .payment-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .dir-c .payment-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--fg);
+    letter-spacing: -0.02em;
+  }
+  .dir-c .payment-detail {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .dir-c .payment-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  .dir-c .payment-line-label { color: var(--muted); }
+  .dir-c .payment-line-value { font-weight: 500; }
+  .dir-c .payment-line-value.pending { color: var(--muted-subtle); font-style: italic; font-weight: 400; }
+  .dir-c .payment-line-value.bonus { color: var(--green); }
+
+  .dir-c .resize-handle {
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    position: relative;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  /* Submit button shared */
+  .submit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 24px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    margin-top: 8px;
+  }
+  .submit-btn:hover { background: var(--accent-hover); }
+  .submit-btn:active { transform: scale(0.99); }
+  .dir-b .submit-btn {
+    background: hsl(230, 70%, 60%);
+  }
+  .dir-b .submit-btn:hover { background: hsl(230, 70%, 55%); }
+
+  /* ===== Intro overlay ===== */
+  .intro {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: hsl(220, 25%, 10%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: white;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .intro.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(1.02);
+  }
+  .intro h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 8px;
+  }
+  .intro h1 span { color: hsl(230, 80%, 72%); }
+  .intro p {
+    font-size: 16px;
+    color: hsl(220, 15%, 60%);
+    max-width: 480px;
+    text-align: center;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+  .intro-btn {
+    padding: 12px 32px;
+    background: hsl(230, 65%, 52%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .intro-btn:hover { background: hsl(230, 65%, 45%); }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(220, 10%, 80%);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(220, 10%, 70%); }
+  .dir-b ::-webkit-scrollbar-thumb { background: hsl(225, 15%, 28%); }
+  .dir-b ::-webkit-scrollbar-thumb:hover { background: hsl(225, 15%, 35%); }
+</style>
+</head>
+<body>
+
+<!-- Intro -->
+<div class="intro" id="intro">
+  <h1>Alignment <span>Journal</span></h1>
+  <p>Reviewer Workspace — 3 Design Directions<br>Click between tabs to compare. Each direction applies the same visual foundation with a different spatial and tonal approach.</p>
+  <button class="intro-btn" onclick="document.getElementById('intro').classList.add('hidden')">Explore Directions</button>
+</div>
+
+<!-- Navigation -->
+<nav class="nav">
+  <div class="nav-brand">Alignment Journal</div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-dir="a">A · Clean Divide</div>
+    <div class="nav-tab" data-dir="b">B · Immersive Scholar</div>
+    <div class="nav-tab" data-dir="c">C · Structured Clarity</div>
+  </div>
+  <div class="nav-hint">Click tabs to compare</div>
+</nav>
+
+<!-- ===== DIRECTION A: Clean Divide ===== -->
+<div class="direction dir-a active" id="dir-a">
+  <div class="workspace-header">
+    <div class="workspace-header-left">
+      <button class="back-btn">&larr; Dashboard</button>
+      <div class="paper-title">Quantifying Stability Of Non-Power-Seeking In Artificial Agents</div>
+    </div>
+    <div class="workspace-header-right">
+      <div class="conf-badge"><span class="dot"></span> Identity hidden from authors</div>
+      <div class="save-indicator"><span class="check">&#10003;</span> Saved</div>
+    </div>
+  </div>
+  <div class="split-container">
+    <div class="paper-panel">
+      <div class="paper-content">
+        <h1>Quantifying Stability Of Non-Power-Seeking In Artificial Agents</h1>
+        <div class="paper-authors">Evan Ryan Gunter, Yevgeny Liokumovich, Victoria Krakovna</div>
+        <div class="paper-meta">
+          <span>Submitted Jan 15, 2026</span>
+          <span>24 pages</span>
+          <span>Agent Foundations</span>
+        </div>
+        <div class="paper-abstract-label">Abstract</div>
+        <p class="paper-abstract">We establish a formal framework for quantifying the stability of non-power-seeking behavior in artificial agents operating in Markov decision processes. Building on prior work characterizing power-seeking tendencies in optimal policies, we introduce a measure of "non-power-seeking stability" that captures how robust an agent's tendency to avoid power-seeking is under perturbations to its reward function, transition dynamics, and discount factor. We prove that for a broad class of environments, optimal policies exhibit a phase transition in power-seeking behavior as a function of the discount factor, and we characterize the critical threshold at which this transition occurs.</p>
+        <h2 class="paper-section-title">1. Introduction</h2>
+        <div class="paper-body">
+          <p>A central concern in AI alignment is the tendency of sufficiently capable agents to seek power as an instrumental goal. Turner et al. (2021) formalized this intuition by proving that optimal policies in Markov decision processes tend to seek power, in the sense that they tend to keep options open and acquire resources. However, their results characterize the behavior of fully optimal agents, leaving open the question of how robust this tendency is.</p>
+          <p>In this paper, we address this gap by introducing a quantitative measure of non-power-seeking stability. Our framework allows researchers and practitioners to assess, for a given agent and environment, how much the agent's policy would need to change before it begins to exhibit power-seeking behavior. This is practically relevant because deployed agents are rarely fully optimal, and understanding the stability of their non-power-seeking behavior is crucial for safety assurance.</p>
+          <p>Our main contributions are threefold. First, we define a formal notion of non-power-seeking stability that is agnostic to the specific definition of power used. Second, we prove general bounds on this stability measure for common environment classes. Third, we identify a phase transition phenomenon: as the discount factor increases past a critical threshold, optimal policies abruptly shift from non-power-seeking to power-seeking behavior.</p>
+        </div>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+    <div class="review-panel">
+      <div class="review-tabs">
+        <div class="review-tab active">Write Review</div>
+        <div class="review-tab">Discussion</div>
+        <div class="review-tab">Guidelines</div>
+      </div>
+      <div class="review-form">
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Summary <span class="section-status complete">Complete</span></div>
+          </div>
+          <textarea class="review-textarea filled" readonly>This paper introduces a formal measure of "non-power-seeking stability" for artificial agents in MDPs. The key contribution is a quantitative framework that characterizes how robust an agent's non-power-seeking behavior is under perturbations, along with a proof of phase transitions in power-seeking as a function of discount factor.</textarea>
+        </div>
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Strengths <span class="section-status in-progress">In Progress</span></div>
+          </div>
+          <textarea class="review-textarea" placeholder="What are the paper's main strengths? Consider novelty, technical correctness, clarity, and significance...">The formalization is clean and the main theorem (Theorem 3.2) is a genuine contribution — connecting discount factor thresholds to power-seeking phase transitions is both technically interesting and practically relevant. The framework is agnostic to the specific power definition used, which</textarea>
+        </div>
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Weaknesses <span class="section-status empty">Not started</span></div>
+          </div>
+          <textarea class="review-textarea" placeholder="What are the paper's weaknesses? Consider gaps, assumptions, missing comparisons, clarity issues..."></textarea>
+        </div>
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Questions <span class="section-status empty">Not started</span></div>
+          </div>
+          <textarea class="review-textarea" placeholder="Questions for the authors to address in their response..." style="min-height: 80px;"></textarea>
+        </div>
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Recommendation <span class="section-status empty">Not started</span></div>
+          </div>
+          <textarea class="review-textarea" placeholder="Your overall assessment and recommendation..." style="min-height: 80px;"></textarea>
+        </div>
+        <button class="submit-btn">Submit Review</button>
+      </div>
+      <div class="payment-footer">
+        <div class="payment-toggle">
+          <span class="payment-label">Estimated Compensation</span>
+          <span class="payment-amount">$780</span>
+        </div>
+        <div class="payment-detail">
+          <div class="payment-line">
+            <span class="payment-line-label">Base (24 pages)</span>
+            <span class="payment-line-value">$580</span>
+          </div>
+          <div class="payment-line">
+            <span class="payment-line-label">Quality multiplier</span>
+            <span class="payment-line-value pending">Pending editor review</span>
+          </div>
+          <div class="payment-line">
+            <span class="payment-line-label">Speed bonus (1 week early)</span>
+            <span class="payment-line-value bonus">+$100</span>
+          </div>
+          <div class="payment-line">
+            <span class="payment-line-label">Reviewer abstract</span>
+            <span class="payment-line-value bonus">+$100</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DIRECTION B: Immersive Scholar ===== -->
+<div class="direction dir-b" id="dir-b">
+  <div class="workspace-header">
+    <div class="workspace-header-left">
+      <button class="back-btn">&larr; Back</button>
+      <div class="paper-title">Quantifying Stability Of Non-Power-Seeking In Artificial Agents</div>
+    </div>
+    <div class="workspace-header-right">
+      <div class="conf-badge"><span class="dot"></span> Identity hidden</div>
+      <div class="save-indicator">&#10003; Saved</div>
+    </div>
+  </div>
+  <div class="split-container">
+    <div class="paper-panel">
+      <div class="paper-content">
+        <h1>Quantifying Stability Of Non-Power-Seeking In Artificial Agents</h1>
+        <div class="paper-authors">Evan Ryan Gunter, Yevgeny Liokumovich, Victoria Krakovna</div>
+        <div class="paper-meta">
+          <span>Submitted Jan 15, 2026</span>
+          <span>24 pages</span>
+          <span>Agent Foundations</span>
+        </div>
+        <div class="paper-abstract-label">Abstract</div>
+        <p class="paper-abstract">We establish a formal framework for quantifying the stability of non-power-seeking behavior in artificial agents operating in Markov decision processes. Building on prior work characterizing power-seeking tendencies in optimal policies, we introduce a measure of "non-power-seeking stability" that captures how robust an agent's tendency to avoid power-seeking is under perturbations to its reward function, transition dynamics, and discount factor.</p>
+        <h2 class="paper-section-title">1. Introduction</h2>
+        <div class="paper-body">
+          <p>A central concern in AI alignment is the tendency of sufficiently capable agents to seek power as an instrumental goal. Turner et al. (2021) formalized this intuition by proving that optimal policies in Markov decision processes tend to seek power, in the sense that they tend to keep options open and acquire resources. However, their results characterize the behavior of fully optimal agents, leaving open the question of how robust this tendency is.</p>
+          <p>In this paper, we address this gap by introducing a quantitative measure of non-power-seeking stability. Our framework allows researchers and practitioners to assess, for a given agent and environment, how much the agent's policy would need to change before it begins to exhibit power-seeking behavior.</p>
+          <p>Our main contributions are threefold. First, we define a formal notion of non-power-seeking stability that is agnostic to the specific definition of power used. Second, we prove general bounds on this stability measure for common environment classes. Third, we identify a phase transition phenomenon: as the discount factor increases past a critical threshold, optimal policies abruptly shift from non-power-seeking to power-seeking behavior.</p>
+        </div>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+    <div class="review-panel">
+      <div class="review-tabs">
+        <div class="review-tab active">Write Review</div>
+        <div class="review-tab">Discussion</div>
+        <div class="review-tab">Guidelines</div>
+      </div>
+      <div class="review-form">
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Summary <span class="section-status complete">Complete</span></div>
+          </div>
+          <textarea class="review-textarea filled" readonly>This paper introduces a formal measure of "non-power-seeking stability" for artificial agents in MDPs. The key contribution is a quantitative framework that characterizes how robust an agent's non-power-seeking behavior is under perturbations, along with a proof of phase transitions in power-seeking as a function of discount factor.</textarea>
+        </div>
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Strengths <span class="section-status in-progress">In Progress</span></div>
+          </div>
+          <textarea class="review-textarea" placeholder="What are the paper's main strengths?">The formalization is clean and the main theorem (Theorem 3.2) is a genuine contribution — connecting discount factor thresholds to power-seeking phase transitions is both technically interesting and practically relevant. The framework is agnostic to the specific power definition used, which</textarea>
+        </div>
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Weaknesses <span class="section-status empty">Not started</span></div>
+          </div>
+          <textarea class="review-textarea" placeholder="What are the paper's weaknesses?"></textarea>
+        </div>
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Questions <span class="section-status empty">Not started</span></div>
+          </div>
+          <textarea class="review-textarea" placeholder="Questions for the authors..." style="min-height: 80px;"></textarea>
+        </div>
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-label">Recommendation <span class="section-status empty">Not started</span></div>
+          </div>
+          <textarea class="review-textarea" placeholder="Your overall assessment..." style="min-height: 80px;"></textarea>
+        </div>
+        <button class="submit-btn">Submit Review</button>
+      </div>
+      <div class="payment-footer">
+        <div class="payment-toggle">
+          <span class="payment-label">Estimated Compensation</span>
+          <span class="payment-amount">$780</span>
+        </div>
+        <div class="payment-detail">
+          <div class="payment-line">
+            <span class="payment-line-label">Base (24 pages)</span>
+            <span class="payment-line-value">$580</span>
+          </div>
+          <div class="payment-line">
+            <span class="payment-line-label">Quality multiplier</span>
+            <span class="payment-line-value pending">Pending editor review</span>
+          </div>
+          <div class="payment-line">
+            <span class="payment-line-label">Speed bonus (1 week early)</span>
+            <span class="payment-line-value bonus">+$100</span>
+          </div>
+          <div class="payment-line">
+            <span class="payment-line-label">Reviewer abstract</span>
+            <span class="payment-line-value bonus">+$100</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DIRECTION C: Structured Clarity ===== -->
+<div class="direction dir-c" id="dir-c">
+  <div class="workspace-header">
+    <div class="workspace-header-left">
+      <button class="back-btn">&larr;</button>
+      <div class="breadcrumb">
+        <span>Reviews</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">Quantifying Stability Of Non-Power-Seeking In Artificial Agents</span>
+      </div>
+    </div>
+    <div class="workspace-header-center">
+      <div class="header-tab active">Paper & Review</div>
+      <div class="header-tab">Discussion</div>
+      <div class="header-tab">Guidelines</div>
+    </div>
+    <div class="workspace-header-right">
+      <div class="conf-badge"><span class="dot"></span> Identity hidden from authors</div>
+      <div class="save-indicator"><span class="check">&#10003;</span> Saved</div>
+    </div>
+  </div>
+  <div class="split-container">
+    <div class="paper-panel">
+      <div class="paper-card">
+        <div class="paper-content">
+          <h1>Quantifying Stability Of Non-Power-Seeking In Artificial Agents</h1>
+          <div class="paper-authors">Evan Ryan Gunter, Yevgeny Liokumovich, Victoria Krakovna</div>
+          <div class="paper-meta">
+            <span>Submitted Jan 15, 2026</span>
+            <span>24 pages</span>
+            <span>Agent Foundations</span>
+          </div>
+          <div class="paper-abstract-label">Abstract</div>
+          <p class="paper-abstract">We establish a formal framework for quantifying the stability of non-power-seeking behavior in artificial agents operating in Markov decision processes. Building on prior work characterizing power-seeking tendencies in optimal policies, we introduce a measure of "non-power-seeking stability" that captures how robust an agent's tendency to avoid power-seeking is under perturbations to its reward function, transition dynamics, and discount factor.</p>
+          <h2 class="paper-section-title">1. Introduction</h2>
+          <div class="paper-body">
+            <p>A central concern in AI alignment is the tendency of sufficiently capable agents to seek power as an instrumental goal. Turner et al. (2021) formalized this intuition by proving that optimal policies in Markov decision processes tend to seek power, in the sense that they tend to keep options open and acquire resources. However, their results characterize the behavior of fully optimal agents, leaving open the question of how robust this tendency is.</p>
+            <p>In this paper, we address this gap by introducing a quantitative measure of non-power-seeking stability. Our framework allows researchers and practitioners to assess, for a given agent and environment, how much the agent's policy would need to change before it begins to exhibit power-seeking behavior.</p>
+            <p>Our main contributions are threefold. First, we define a formal notion of non-power-seeking stability that is agnostic to the specific definition of power used. Second, we prove general bounds on this stability measure for common environment classes. Third, we identify a phase transition phenomenon: as the discount factor increases past a critical threshold, optimal policies abruptly shift from non-power-seeking to power-seeking behavior.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="review-panel">
+      <div class="review-card">
+        <div class="review-card-header">
+          <div class="review-card-title">
+            <div class="progress-ring">2/5</div>
+            Your Review
+          </div>
+        </div>
+        <div class="review-form">
+          <div class="review-section">
+            <div class="review-section-header">
+              <div class="review-section-label">Summary <span class="section-status complete">Complete</span></div>
+            </div>
+            <textarea class="review-textarea filled" readonly>This paper introduces a formal measure of "non-power-seeking stability" for artificial agents in MDPs. The key contribution is a quantitative framework that characterizes how robust an agent's non-power-seeking behavior is under perturbations, along with a proof of phase transitions in power-seeking as a function of discount factor.</textarea>
+          </div>
+          <div class="review-section">
+            <div class="review-section-header">
+              <div class="review-section-label">Strengths <span class="section-status in-progress">In Progress</span></div>
+            </div>
+            <textarea class="review-textarea" placeholder="What are the paper's main strengths?">The formalization is clean and the main theorem (Theorem 3.2) is a genuine contribution — connecting discount factor thresholds to power-seeking phase transitions is both technically interesting and practically relevant. The framework is agnostic to the specific power definition used, which</textarea>
+          </div>
+          <div class="review-section">
+            <div class="review-section-header">
+              <div class="review-section-label">Weaknesses <span class="section-status empty">Not started</span></div>
+            </div>
+            <textarea class="review-textarea" placeholder="What are the paper's weaknesses?" style="min-height: 100px;"></textarea>
+          </div>
+          <div class="review-section">
+            <div class="review-section-header">
+              <div class="review-section-label">Questions <span class="section-status empty">Not started</span></div>
+            </div>
+            <textarea class="review-textarea" placeholder="Questions for the authors..." style="min-height: 80px;"></textarea>
+          </div>
+          <div class="review-section">
+            <div class="review-section-header">
+              <div class="review-section-label">Recommendation <span class="section-status empty">Not started</span></div>
+            </div>
+            <textarea class="review-textarea" placeholder="Your overall assessment..." style="min-height: 80px;"></textarea>
+          </div>
+          <button class="submit-btn">Submit Review</button>
+        </div>
+      </div>
+      <div class="payment-card">
+        <div class="payment-toggle">
+          <span class="payment-label">Estimated Compensation</span>
+          <span class="payment-amount">$780</span>
+        </div>
+        <div class="payment-detail">
+          <div class="payment-line">
+            <span class="payment-line-label">Base (24 pages)</span>
+            <span class="payment-line-value">$580</span>
+          </div>
+          <div class="payment-line">
+            <span class="payment-line-label">Quality multiplier</span>
+            <span class="payment-line-value pending">Pending editor review</span>
+          </div>
+          <div class="payment-line">
+            <span class="payment-line-label">Speed bonus (1 week early)</span>
+            <span class="payment-line-value bonus">+$100</span>
+          </div>
+          <div class="payment-line">
+            <span class="payment-line-label">Reviewer abstract</span>
+            <span class="payment-line-value bonus">+$100</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.direction').forEach(d => d.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('dir-' + tab.dataset.dir).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
