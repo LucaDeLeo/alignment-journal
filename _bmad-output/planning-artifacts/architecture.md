@@ -768,7 +768,8 @@ alignment-journal/
 <!-- Updated from Epic 5 retrospective -->
 | Reviewer Abstract | FR36-38 | `reviewerAbstracts.ts` | `review/` (abstract-draft-form), `submissions/` (abstract-review-panel) | `review/$submissionId.tsx` |
 | Publication | FR39-43 | `articles.ts` (public queries, no auth) | `article/` | `article/$articleId.tsx`, `article/index.tsx` |
-| Payment Tracking | FR44-46 | `payments.ts` | `payments/` | `editor/submissions.$id.tsx` |
+<!-- Updated from Epic 6 retrospective -->
+| Payment Tracking | FR44-46 | `payments.ts` | `review/` (PaymentCalculator), `editor/` (PaymentSummaryTable) | `review/$submissionId.tsx`, `editor/submissions.$id.tsx` |
 | Seed Data | FR47-51 | `seed.ts` | — | — |
 | Notifications | FR52-53 | `notifications.ts` | `notifications/` | (inline in editor routes) |
 

@@ -3,7 +3,7 @@ import { v } from 'convex/values'
 import { query } from './_generated/server'
 import { withUser } from './helpers/auth'
 import { unauthorizedError } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
@@ -31,11 +31,7 @@ export const listBySubmission = query({
       ctx: QueryCtx & { user: Doc<'users'> },
       args: { submissionId: Id<'submissions'> },
     ) => {
-      if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
-      ) {
+      if (!hasEditorRole(ctx.user.role)) {
         throw unauthorizedError('Requires editor role to view notifications')
       }
 

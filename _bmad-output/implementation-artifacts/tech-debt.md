@@ -303,5 +303,61 @@
 - **Description:** Epic 5 added 3 new components to `app/features/article/` (ArticlePage, DualAbstractDisplay, ArticleMetadata), created AbstractDraftForm in `app/features/review/`, and created AbstractReviewPanel in `app/features/submissions/`. Zero component-level tests. Combined with TD-015 and TD-028, the project now has 32+ frontend components with no component-level verification.
 - **Impact:** Frontend behavior for the entire publication flow is unverified.
 - **Fix:** Priority targets: `DualAbstractDisplay` (small, deterministic, tests dual vs single abstract rendering) and `WordCounter` (tests color logic based on word count range).
-- **Priority:** P1 -- Address during Epic 6 debt-fix pass
+- **Priority:** P1 -- Address during Epic 7 debt-fix pass
 - **Status:** Open. Identified 2026-02-08 during Epic 5 debt-fix pass.
+
+<!-- Added from Epic 6 debt-fix pass -->
+
+## TD-035: `formatCurrency` duplicated between payment-calculator.tsx and payment-summary-table.tsx [RESOLVED]
+- **Story:** 6-1-reviewer-payment-calculation-and-display, 6-2-editor-payment-summary-view
+- **Location:** `app/features/review/payment-calculator.tsx:83-85`, `app/features/editor/payment-summary-table.tsx:35-37`
+- **Issue:** Identical `formatCurrency(amount: number): string` function defined in two files across different feature folders. Same pattern as TD-022 and TD-029.
+- **Resolution:** Extracted to `app/lib/format-utils.ts` as a shared utility. Both consumer files now import from the shared module.
+- **Resolved:** 2026-02-08 (Epic 6 completion)
+
+## TD-036: `hasEditorRole` type assertion pattern cleaned up in Epic 6 files [RESOLVED]
+- **Story:** 6-1-reviewer-payment-calculation-and-display, 6-2-editor-payment-summary-view, 6-3-in-app-notification-previews
+- **Location:** `convex/payments.ts:230-233`, `convex/payments.ts:342-345`, `convex/notifications.ts:35-37`
+- **Issue:** The `EDITOR_ROLES.includes(ctx.user.role as (typeof EDITOR_ROLES)[number])` type assertion pattern was used in 3 callsites across 2 new Epic 6 files. This is the same unsafe cast pattern as TD-008 (resolved for frontend in Epic 1, but unaddressed in Convex layer).
+- **Resolution:** Created `hasEditorRole(role: string): boolean` helper in `convex/helpers/roles.ts`. Updated all 3 Epic 6 callsites in `convex/payments.ts` and `convex/notifications.ts` to use the helper. Remaining 20+ callsites across other epics are tracked separately as TD-037.
+- **Resolved:** 2026-02-08 (Epic 6 completion)
+
+## TD-037: EDITOR_ROLES type assertion pattern across 20+ backend callsites
+- **Story:** Epic 6 retrospective (systemic, spans Epics 3-5)
+- **Location:** `convex/submissions.ts`, `convex/decisions.ts`, `convex/invitations.ts`, `convex/matching.ts`, `convex/matchingActions.ts`, `convex/discussions.ts`, `convex/reviewerAbstracts.ts`, `convex/audit.ts`, `convex/users.ts`
+- **Severity:** P3
+- **Description:** The `EDITOR_ROLES.includes(ctx.user.role as (typeof EDITOR_ROLES)[number])` type assertion pattern is used in 20+ callsites across 9 Convex files. The `hasEditorRole()` helper created in TD-036 can replace all of them, but the scope is too large for a single-epic debt fix (touching files across Epics 3-5). Alternatively, a `withEditorRole` HOF wrapper (recommended in Epic 3 retrospective) would eliminate the pattern entirely.
+- **Impact:** Type safety gap -- the cast prevents TypeScript from flagging new roles that are not handled in the array.
+- **Fix:** Either (a) replace all `EDITOR_ROLES.includes(... as ...)` with `hasEditorRole(ctx.user.role)`, or (b) create a `withEditorRole` HOF wrapper in `convex/helpers/auth.ts` that combines `withUser` + role check.
+- **Priority:** P3 -- Refactoring convenience, no functional risk
+- **Status:** Open. Identified 2026-02-08 during Epic 6 debt-fix pass.
+
+## TD-038: `notifications` table missing `by_submissionId` index
+- **Story:** 6-3-in-app-notification-previews
+- **Location:** `convex/schema.ts:209-217`, `convex/notifications.ts:43`
+- **Severity:** P2
+- **Description:** The `notifications` table only has a `by_recipientId` index. The `listBySubmission` query (added in Story 6-3) filters by `submissionId` using `.filter()`, which performs a full table scan. As the notifications table grows, this query will degrade linearly.
+- **Impact:** Performance risk at scale. Currently acceptable for prototype (<1000 notifications).
+- **Fix:** Add `.index('by_submissionId', ['submissionId'])` to the `notifications` table in `convex/schema.ts`. Update `listBySubmission` to use `.withIndex('by_submissionId', ...)`. Note: `submissionId` is optional on the schema, so the index will only include rows where it is defined.
+- **Priority:** P2 -- Address before production scale
+- **Status:** Open. Identified 2026-02-08 during Epic 6 debt-fix pass.
+
+## TD-039: Zero backend tests for notifications.ts, getPaymentSummary, and setQualityLevel
+- **Story:** Epic 6 retrospective (spans 6-2:AC1, 6-2:AC2, 6-3:AC1)
+- **Location:** `convex/notifications.ts`, `convex/payments.ts` (getPaymentSummary, setQualityLevel)
+- **Severity:** P0
+- **Description:** The `convex/notifications.ts` module and the `getPaymentSummary`/`setQualityLevel` functions in `convex/payments.ts` have zero automated tests. Only the pure `computePaymentBreakdown` function has tests (20 tests in `convex/__tests__/payments.test.ts`). Untested: editor role authorization checks in all 3 functions, `setQualityLevel` upsert logic (create vs update payments record), `listBySubmission` notification enrichment with recipient names, `getPaymentSummary` reviewer deduplication logic.
+- **Impact:** Auth bypass risk (editor role checks unverified), data integrity risk (payment upsert logic unverified).
+- **Fix:** Write integration tests with mocked Convex context for: `getPaymentSummary` role check + reviewer deduplication, `setQualityLevel` role check + create/update logic, `listBySubmission` role check + enrichment.
+- **Priority:** P0 -- Must resolve before Epic 7 feature work
+- **Status:** Open. Identified 2026-02-08 during Epic 6 debt-fix pass.
+
+## TD-040: Zero component tests for Epic 6 frontend components (3 new)
+- **Story:** Epic 6 retrospective (spans all Epic 6 frontend)
+- **Location:** `app/features/review/payment-calculator.tsx`, `app/features/editor/payment-summary-table.tsx`, `app/features/notifications/notification-preview-list.tsx`
+- **Severity:** P1
+- **Description:** Epic 6 added 3 new frontend components with zero component-level tests. Combined with TD-015, TD-028, and TD-034, the project now has 35+ frontend components across 6 feature folders with no component-level verification.
+- **Impact:** Frontend behavior for payment display, quality selector interaction, and notification rendering is unverified.
+- **Fix:** Priority targets: `PaymentCalculator` (tests counting-up animation disabled path, line item rendering) or `NotificationPreviewList` (tests badge variant mapping, relative time formatting).
+- **Priority:** P1 -- Address during Epic 7 debt-fix pass
+- **Status:** Open. Identified 2026-02-08 during Epic 6 debt-fix pass.

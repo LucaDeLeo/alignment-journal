@@ -49,7 +49,7 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: Author Submission & LLM Triage Pipeline
-  epic-2: backlog
+  epic-2: done
   2-1-author-submission-form-and-pdf-upload:done
   2-2-submission-status-tracking:done
   2-3-pdf-text-extraction-and-triage-orchestration:done
@@ -57,7 +57,7 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Editor Dashboard & Reviewer Assignment
-  epic-3: backlog
+  epic-3: done
   3-1-editor-pipeline-dashboard:done
   3-2-submission-detail-view-with-triage-results:done
   3-3-action-editor-assignment-and-audit-trail:done
@@ -68,7 +68,7 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Review Process & Semi-Confidential Discussion
-  epic-4: backlog
+  epic-4: done
   4-1-reviewer-invitation-acceptance-and-onboarding:done
   4-2-split-view-review-workspace-with-inline-pdf:done
   4-3-structured-review-form-with-auto-save:done
@@ -83,11 +83,11 @@ development_status:
   epic-5-retrospective: done
 
   # Epic 6: Payment Tracking & Notifications
-  epic-6: backlog
+  epic-6: done
   6-1-reviewer-payment-calculation-and-display:done
   6-2-editor-payment-summary-view:done
   6-3-in-app-notification-previews:done
-  epic-6-retrospective: optional
+  epic-6-retrospective: done
 
   # Epic 7: Seed Data & Demo Experience
   epic-7: backlog

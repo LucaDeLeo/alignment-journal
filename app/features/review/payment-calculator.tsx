@@ -20,6 +20,7 @@ import {
   CollapsibleTrigger,
 } from '~/components/ui/collapsible'
 import { Separator } from '~/components/ui/separator'
+import { formatCurrency } from '~/lib/format-utils'
 import { cn } from '~/lib/utils'
 
 // ---------- useCountUp hook ----------
@@ -76,12 +77,6 @@ function useDeadlineCountdown(deadlineMs: number): number {
   }, [deadlineMs])
 
   return daysRemaining
-}
-
-// ---------- formatCurrency ----------
-
-function formatCurrency(amount: number): string {
-  return `$${amount.toLocaleString()}`
 }
 
 // ---------- LineItem ----------

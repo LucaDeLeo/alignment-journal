@@ -15,3 +15,14 @@ export const EDITOR_ROLES = [
 
 /** Roles allowed to write/modify reviewer profiles. */
 export const WRITE_ROLES = ['admin', 'editor_in_chief'] as const
+
+/**
+ * Type-safe check for editor-level access.
+ *
+ * Avoids the `as (typeof EDITOR_ROLES)[number]` cast required by
+ * `ReadonlyArray.includes()` when the input type is wider than
+ * the array's element type.
+ */
+export function hasEditorRole(role: string): boolean {
+  return (EDITOR_ROLES as ReadonlyArray<string>).includes(role)
+}

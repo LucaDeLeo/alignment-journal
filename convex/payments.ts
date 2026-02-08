@@ -3,7 +3,7 @@ import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { withReviewer, withUser } from './helpers/auth'
 import { notFoundError, unauthorizedError, validationError } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -226,11 +226,7 @@ export const getPaymentSummary = query({
       ctx: QueryCtx & { user: Doc<'users'> },
       args: { submissionId: Id<'submissions'> },
     ) => {
-      if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
-      ) {
+      if (!hasEditorRole(ctx.user.role)) {
         throw unauthorizedError(
           'Requires editor, action editor, or admin role',
         )
@@ -338,11 +334,7 @@ export const setQualityLevel = mutation({
         qualityLevel: 'standard' | 'excellent'
       },
     ) => {
-      if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
-      ) {
+      if (!hasEditorRole(ctx.user.role)) {
         throw unauthorizedError(
           'Requires editor, action editor, or admin role',
         )

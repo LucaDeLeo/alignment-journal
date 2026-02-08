@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '~/components/ui/select'
+import { formatCurrency } from '~/lib/format-utils'
 
 interface PaymentSummaryTableProps {
   submissionId: Id<'submissions'>
@@ -30,10 +31,6 @@ function formatReviewStatus(status: string): string {
     default:
       return status
   }
-}
-
-function formatCurrency(amount: number): string {
-  return `$${amount.toLocaleString()}`
 }
 
 export function PaymentSummaryTable({

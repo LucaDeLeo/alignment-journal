@@ -24,7 +24,8 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Each feature folder has an `index.ts` barrel export for clean imports from route files
 - Naming: `feature-verb.tsx` (e.g., `submission-form.tsx`, `triage-report-card.tsx`)
 - Shared utilities within a feature: `{domain}-constants.ts`, `status-utils.ts`
-- Established folders: `app/features/submissions/` (12 files), `app/features/auth/`, `app/features/editor/` (14 files), `app/features/review/` (14 files), `app/features/admin/` (3 files), `app/features/article/` (3 files)
+<!-- Updated from Epic 6 retrospective -->
+- Established folders: `app/features/submissions/` (12 files), `app/features/auth/`, `app/features/editor/` (15 files), `app/features/review/` (15 files), `app/features/admin/` (3 files), `app/features/article/` (3 files), `app/features/notifications/` (3 files)
 - Future epics should follow this pattern for new domains
 - Cross-feature reuse: import from sibling feature barrel exports (e.g., `~/features/submissions` in editor components)
 
@@ -73,7 +74,8 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - `convex/helpers/auth.ts` - HOF wrappers for RBAC (see Auth Wrappers below)
 - `convex/helpers/transitions.ts` - Editorial state machine (`VALID_TRANSITIONS`, `assertTransition`)
 - `convex/helpers/errors.ts` - Structured `ConvexError` helpers (10 error types)
-- `convex/helpers/roles.ts` - Shared role constants (`EDITOR_ROLES`, `WRITE_ROLES`) used by 7+ Convex files
+<!-- Updated from Epic 6 retrospective -->
+- `convex/helpers/roles.ts` - Shared role constants (`EDITOR_ROLES`, `WRITE_ROLES`) and `hasEditorRole()` type-safe helper, used by 7+ Convex files
 - Frontend re-exports shared Convex constants via feature barrel files (e.g., `app/features/editor/editor-constants.ts`)
 
 ### Auth Wrappers (Convex RBAC)
@@ -82,7 +84,8 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - All Convex mutations/queries use a wrapper except `ensureUser` (bootstraps the user record on first auth, cannot require an existing user), `getInviteStatus` (public query, no auth — allows checking invite status before sign-in), and `articles.getPublishedArticle` / `articles.listPublished` (Diamond Open Access public queries — status filter enforces security boundary)
 - `me` query uses the Convex "skip" pattern: gated on `isBootstrapped` state so it does not fire before `ensureUser` completes
 - `switchRole` mutation has a server-side guard checking `DEMO_ROLE_SWITCHER` env var -- disabled in production to prevent role self-escalation
-- Editor role gating: most editor functions use `withUser` + manual `EDITOR_ROLES.includes(ctx.user.role)` check (from `convex/helpers/roles.ts`) because the `withEditor` wrapper is too restrictive (only allows `editor_in_chief`)
+<!-- Updated from Epic 6 retrospective -->
+- Editor role gating: most editor functions use `withUser` + `hasEditorRole(ctx.user.role)` check (from `convex/helpers/roles.ts`) because the `withEditor` wrapper is too restrictive (only allows `editor_in_chief`). New functions should prefer `hasEditorRole()` over the raw `EDITOR_ROLES.includes(... as ...)` pattern
 
 ### Audit Trail Pattern
 <!-- Added from Epic 3 retrospective -->
@@ -120,6 +123,19 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Coverage: `@vitest/coverage-v8` configured with v8 provider
   - Includes: `app/**/*.{ts,tsx}`, `convex/**/*.ts`
   - Excludes: `app/routeTree.gen.ts`, `convex/_generated/**`, test files, type declarations
+
+### Pure Function Testing Pattern
+<!-- Added from Epic 6 retrospective -->
+- For Convex functions with complex business logic (calculations, validation rules, state checks), extract the logic into a pure function that takes a plain TypeScript interface as input
+- Test the pure function directly without mocking Convex database context
+- The Convex handler becomes a thin adapter: collect input from database, call pure function, return result
+- Example: `computePaymentBreakdown` in `convex/payments.ts` -- single source of truth for both reviewer-facing and editor-facing payment calculations, tested by 23 unit tests in `convex/__tests__/payments.test.ts`
+
+### Shared Utilities (`app/lib/`)
+<!-- Added from Epic 6 retrospective -->
+- `app/lib/utils.ts` - `cn()` classname merger (shadcn/ui standard)
+- `app/lib/format-utils.ts` - `formatCurrency()` shared formatting utility
+- Utilities used across multiple feature folders belong in `app/lib/`; feature-specific utilities stay in their feature folder
 
 ### Fonts
 - Satoshi (sans): self-hosted woff2 in `public/fonts/satoshi/`

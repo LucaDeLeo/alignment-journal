@@ -239,9 +239,14 @@ Accepted papers flow through reviewer abstract drafting, author approval, and pu
 **Review fix cycles avg:** 0.0 (first perfect epic -- zero review fixes)
 **Tech debt resolved:** 3 (TD-029, TD-030, TD-031) | **New tech debt:** 3 (TD-032, TD-033, TD-034)
 
-### Epic 6: Payment Tracking & Notifications
+### Epic 6: Payment Tracking & Notifications -- COMPLETE
 Reviewers see transparent compensation calculations, editors view payment summaries, and the system renders in-app notification previews for all email touchpoints.
 **FRs covered:** FR44, FR45, FR46, FR52, FR53
+**Status:** COMPLETE (implementation) | Quality gate: PASS (core payment formula tested, 83/83 sub-criteria verified)
+**Completed:** 2026-02-08 | **Duration:** ~71 minutes | **Stories:** 3/3 | **Tests:** 96 passing (23 new) | **Commits:** 3
+**Sprint Mode:** YOLO | **Velocity:** 2.54 stories/hour (highest across all epics)
+**Review fix cycles avg:** 0.0 (2nd consecutive perfect epic)
+**Tech debt resolved:** 2 (TD-035, TD-036) | **New tech debt:** 4 (TD-037, TD-038, TD-039, TD-040)
 
 ### Epic 7: Seed Data & Demo Experience
 The system ships with realistic seed data across all pipeline stages plus the demo-only role switcher and cmd+K palette for evaluator exploration.
@@ -858,9 +863,13 @@ So that I can quickly assess whether the paper is worth reading.
 
 ---
 
-## Epic 6: Payment Tracking & Notifications
+## Epic 6: Payment Tracking & Notifications -- COMPLETE
+
+<!-- Updated from Epic 6 retrospective -->
 
 Reviewers see transparent compensation calculations, editors view payment summaries, and the system renders in-app notification previews for all email touchpoints.
+
+> **Completion:** 2026-02-08 | All 3 stories delivered in ~71 minutes (YOLO mode). 96 tests passing (100%). Quality gate PASS -- core payment formula covered by 23 unit tests via pure function extraction pattern (`computePaymentBreakdown`). Zero review fix cycles -- 2nd consecutive perfect epic. 2 tech debt items resolved inline (TD-035 formatCurrency, TD-036 hasEditorRole). Notifications feature folder (`app/features/notifications/`, 3 components) established. `app/lib/format-utils.ts` created as first shared utility beyond `utils.ts`. See `epic-6-retrospective.md` and `epic-6-traceability.md` for full analysis.
 
 ### Story 6.1: Reviewer Payment Calculation and Display
 
