@@ -79,7 +79,7 @@ development_status:
   epic-5: backlog
   5-1-reviewer-abstract-drafting-and-signing:done
   5-2-author-acceptance-of-reviewer-abstract:done
-  5-3-published-article-page-with-dual-abstracts: backlog
+  5-3-published-article-page-with-dual-abstracts:done
   epic-5-retrospective: optional
 
   # Epic 6: Payment Tracking & Notifications
