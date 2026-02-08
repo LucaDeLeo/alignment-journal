@@ -1,6 +1,12 @@
 import { BookOpenIcon, InfoIcon, MessageSquareIcon } from 'lucide-react'
 
 import { ProgressRing } from './progress-ring'
+import { ReviewForm } from './review-form'
+import { getSectionStatus } from './review-section-field'
+
+import type { Id } from 'convex/_generated/dataModel'
+import type { ReviewSections } from './review-form'
+
 import { ScrollArea } from '~/components/ui/scroll-area'
 import {
   Tabs,
@@ -9,12 +15,38 @@ import {
   TabsTrigger,
 } from '~/components/ui/tabs'
 
+const SECTION_KEYS = [
+  'summary',
+  'strengths',
+  'weaknesses',
+  'questions',
+  'recommendation',
+] as const
 
 /**
  * Tabbed review panel with Write Review, Discussion, and Guidelines tabs.
- * Story 4.2 renders placeholder content — actual forms built in Stories 4.3/4.4.
+ * Receives review data as props and renders ReviewForm in the Write tab.
  */
-export function ReviewPanel() {
+export function ReviewPanel({
+  reviewId,
+  submissionId,
+  sections,
+  revision,
+  status,
+  submittedAt,
+}: {
+  reviewId: Id<'reviews'>
+  submissionId: Id<'submissions'>
+  sections: ReviewSections
+  revision: number
+  status: string
+  submittedAt?: number
+}) {
+  const completedCount = SECTION_KEYS.filter((key) => {
+    const val = sections[key] ?? ''
+    return getSectionStatus(key, val) === 'complete'
+  }).length
+
   return (
     <ScrollArea className="h-full">
       <div className="bg-muted/50 p-4 space-y-4">
@@ -35,16 +67,17 @@ export function ReviewPanel() {
           </TabsList>
 
           <TabsContent value="write" className="mt-4">
-            <div className="flex flex-col items-center gap-3 rounded-lg border bg-background p-6 text-center">
-              <ProgressRing completed={0} total={5} />
-              <p className="text-sm font-medium">
-                Review form coming in the next update
-              </p>
-              <p className="text-xs text-muted-foreground">
-                You&apos;ll be able to provide structured feedback across 5
-                review sections.
-              </p>
+            <div className="flex items-center gap-2 mb-4">
+              <ProgressRing completed={completedCount} total={5} />
             </div>
+            <ReviewForm
+              sections={sections}
+              reviewId={reviewId}
+              submissionId={submissionId}
+              revision={revision}
+              status={status}
+              submittedAt={submittedAt}
+            />
           </TabsContent>
 
           <TabsContent value="discussion" className="mt-4">

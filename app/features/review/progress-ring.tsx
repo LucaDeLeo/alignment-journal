@@ -1,8 +1,6 @@
 /**
  * SVG circular progress indicator.
  * Shows "N/5" center text for review section completion.
- * Placeholder for Story 4.2 — always shows 0/5.
- * Story 4.3 will wire it to actual section completion.
  */
 export function ProgressRing({
   completed = 0,
@@ -46,6 +44,9 @@ export function ProgressRing({
         strokeDasharray={circumference}
         strokeDashoffset={dashOffset}
         strokeLinecap="round"
+        style={{
+          transition: 'stroke-dashoffset 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        }}
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
       />
       {/* Center text */}

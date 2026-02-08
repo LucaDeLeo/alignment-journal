@@ -1,8 +1,14 @@
 import { v } from 'convex/values'
 
-import { mutation, query } from './_generated/server'
+import { internal } from './_generated/api'
+import { internalMutation, mutation, query } from './_generated/server'
 import { withReviewer, withUser } from './helpers/auth'
-import { notFoundError, unauthorizedError } from './helpers/errors'
+import {
+  notFoundError,
+  unauthorizedError,
+  validationError,
+  versionConflictError,
+} from './helpers/errors'
 import { submissionStatusValidator } from './helpers/transitions'
 
 import type { Doc, Id } from './_generated/dataModel'
@@ -102,6 +108,7 @@ export const getSubmissionForReviewer = query({
           recommendation: v.optional(v.string()),
         }),
         revision: v.number(),
+        submittedAt: v.optional(v.number()),
       }),
     }),
   ),
@@ -143,6 +150,7 @@ export const getSubmissionForReviewer = query({
           status: review.status,
           sections: review.sections,
           revision: review.revision,
+          submittedAt: review.submittedAt,
         },
       }
     },
@@ -176,7 +184,7 @@ export const startReview = mutation({
       }
 
       if (review.status === 'assigned') {
-        await ctx.db.patch("reviews", review._id, {
+        await ctx.db.patch('reviews', review._id, {
           status: 'in_progress',
           updatedAt: Date.now(),
         })
@@ -185,4 +193,162 @@ export const startReview = mutation({
       return null
     },
   ),
+})
+
+const sectionNameValidator = v.union(
+  v.literal('summary'),
+  v.literal('strengths'),
+  v.literal('weaknesses'),
+  v.literal('questions'),
+  v.literal('recommendation'),
+)
+
+/**
+ * Auto-saves a single review section with optimistic concurrency.
+ * Checks revision to prevent silent overwrites in multi-tab scenarios.
+ */
+export const updateSection = mutation({
+  args: {
+    submissionId: v.id('submissions'),
+    section: sectionNameValidator,
+    content: v.string(),
+    expectedRevision: v.number(),
+  },
+  returns: v.object({ revision: v.number() }),
+  handler: withReviewer(
+    async (
+      ctx: MutationCtx & { user: Doc<'users'> },
+      args: {
+        submissionId: Id<'submissions'>
+        section: string
+        content: string
+        expectedRevision: number
+      },
+    ) => {
+      const review = await ctx.db
+        .query('reviews')
+        .withIndex('by_submissionId_reviewerId', (q) =>
+          q
+            .eq('submissionId', args.submissionId)
+            .eq('reviewerId', ctx.user._id),
+        )
+        .unique()
+
+      if (!review) {
+        throw notFoundError('Review')
+      }
+
+      if (review.status !== 'in_progress' && review.status !== 'submitted') {
+        throw validationError(
+          'Review sections can only be edited when in progress or within the edit window',
+        )
+      }
+
+      if (review.revision !== args.expectedRevision) {
+        throw versionConflictError()
+      }
+
+      const newRevision = review.revision + 1
+      await ctx.db.patch('reviews', review._id, {
+        sections: {
+          ...review.sections,
+          [args.section]: args.content,
+        },
+        revision: newRevision,
+        updatedAt: Date.now(),
+      })
+
+      return { revision: newRevision }
+    },
+  ),
+})
+
+/**
+ * Submits a review after validating all 5 sections have content.
+ * Transitions status to submitted, sets submittedAt, and schedules auto-lock.
+ */
+export const submitReview = mutation({
+  args: {
+    submissionId: v.id('submissions'),
+    expectedRevision: v.number(),
+  },
+  returns: v.null(),
+  handler: withReviewer(
+    async (
+      ctx: MutationCtx & { user: Doc<'users'> },
+      args: { submissionId: Id<'submissions'>; expectedRevision: number },
+    ) => {
+      const review = await ctx.db
+        .query('reviews')
+        .withIndex('by_submissionId_reviewerId', (q) =>
+          q
+            .eq('submissionId', args.submissionId)
+            .eq('reviewerId', ctx.user._id),
+        )
+        .unique()
+
+      if (!review) {
+        throw notFoundError('Review')
+      }
+
+      if (review.status !== 'in_progress') {
+        throw validationError('Review can only be submitted from in_progress status')
+      }
+
+      const { sections } = review
+      const requiredSections = [
+        'summary',
+        'strengths',
+        'weaknesses',
+        'questions',
+        'recommendation',
+      ] as const
+      for (const name of requiredSections) {
+        if (!sections[name] || sections[name].trim().length === 0) {
+          throw validationError(
+            'All sections must be completed before submitting',
+          )
+        }
+      }
+
+      const newRevision = review.revision + 1
+      await ctx.db.patch('reviews', review._id, {
+        status: 'submitted',
+        submittedAt: Date.now(),
+        revision: newRevision,
+        updatedAt: Date.now(),
+      })
+
+      await ctx.scheduler.runAfter(
+        15 * 60 * 1000,
+        internal.reviews.lockReview,
+        { reviewId: review._id },
+      )
+
+      return null
+    },
+  ),
+})
+
+/**
+ * Auto-locks a review after the 15-minute Tier 2 edit window.
+ * Idempotent — no-op if already locked or in a different state.
+ */
+export const lockReview = internalMutation({
+  args: { reviewId: v.id('reviews') },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const review = await ctx.db.get('reviews', args.reviewId)
+    if (!review) return null
+
+    if (review.status === 'submitted') {
+      await ctx.db.patch('reviews', review._id, {
+        status: 'locked',
+        lockedAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    }
+
+    return null
+  },
 })

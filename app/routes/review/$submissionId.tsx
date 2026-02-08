@@ -85,7 +85,7 @@ function ReviewWorkspacePage() {
     return null
   }
 
-  const { submission } = data
+  const { submission, review } = data
 
   const paperPanel = (
     <PaperPanel
@@ -98,7 +98,16 @@ function ReviewWorkspacePage() {
     />
   )
 
-  const reviewPanel = <ReviewPanel />
+  const reviewPanel = (
+    <ReviewPanel
+      reviewId={review._id}
+      submissionId={submission._id}
+      sections={review.sections}
+      revision={review.revision}
+      status={review.status}
+      submittedAt={review.submittedAt}
+    />
+  )
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
