@@ -11,15 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '~/components/ui/select'
-
-/** All roles with their display names, used for the select dropdown. */
-const ROLES: Array<{ value: Doc<'users'>['role']; label: string }> = [
-  { value: 'author', label: 'Author' },
-  { value: 'reviewer', label: 'Reviewer' },
-  { value: 'action_editor', label: 'Action Editor' },
-  { value: 'editor_in_chief', label: 'Editor-in-Chief' },
-  { value: 'admin', label: 'Admin' },
-]
+import { ROLE_OPTIONS } from '~/features/auth/constants'
 
 /**
  * Demo-only role switching dropdown.
@@ -58,7 +50,7 @@ export function RoleSwitcher({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {ROLES.map((role) => (
+        {ROLE_OPTIONS.map((role) => (
           <SelectItem key={role.value} value={role.value}>
             {role.label}
           </SelectItem>

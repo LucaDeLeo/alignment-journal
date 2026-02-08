@@ -8,7 +8,7 @@ import * as React from 'react'
 
 import { ErrorBoundary } from '~/components/error-boundary'
 import { RouteSkeleton } from '~/components/route-skeleton'
-import { useBootstrappedUser } from '~/features/auth'
+import { hasRole, useBootstrappedUser } from '~/features/auth'
 
 const ALLOWED_ROLES = ['author', 'admin'] as const
 
@@ -26,7 +26,7 @@ function SubmitLayout() {
   const navigate = useNavigate()
 
   const hasAccess =
-    user && ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])
+    user && hasRole(user.role, ALLOWED_ROLES)
 
   React.useEffect(() => {
     if (user !== undefined && !hasAccess) {

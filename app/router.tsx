@@ -6,7 +6,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { routeTree } from './routeTree.gen'
 
 export function getRouter() {
-  const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL!
+  const CONVEX_URL = import.meta.env.VITE_CONVEX_URL!
   if (!CONVEX_URL) {
     throw new Error('missing VITE_CONVEX_URL envar')
   }
@@ -32,7 +32,9 @@ export function getRouter() {
       defaultPreload: 'intent',
       scrollRestoration: true,
       defaultPreloadStaleTime: 0,
-      defaultErrorComponent: (err) => <p>{err.error.stack}</p>,
+      defaultErrorComponent: (err) => (
+        <p>{import.meta.env.DEV ? err.error.stack : 'An unexpected error occurred.'}</p>
+      ),
       defaultNotFoundComponent: () => <p>not found</p>,
       context: { queryClient, convexClient: convex, convexQueryClient },
       Wrap: ({ children }) => (

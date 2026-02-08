@@ -1,3 +1,4 @@
+export { hasRole, ROLE_DISPLAY_NAMES, ROLE_OPTIONS } from './constants'
 export { RoleBadge } from './role-badge'
 export { RoleSwitcher } from './role-switcher'
 export { useBootstrappedUser } from './use-bootstrapped-user'

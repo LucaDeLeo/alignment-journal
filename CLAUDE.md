@@ -56,6 +56,12 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - `app/components/route-skeleton.tsx` - route-level skeleton with `default`/`centered`/`sidebar` variants
 - Respects `prefers-reduced-motion` (static skeleton when reduced motion preferred)
 
+### Auth Wrappers (Convex RBAC)
+- `convex/helpers/auth.ts` - HOF wrappers: `withUser`, `withRole`, `withAuthor`, `withEditor`, `withAdmin`, `withReviewer`, `withActionEditor`
+- All Convex mutations/queries use a wrapper except `ensureUser` (bootstraps the user record on first auth, cannot require an existing user)
+- `me` query uses the Convex "skip" pattern: gated on `isBootstrapped` state so it does not fire before `ensureUser` completes
+- `switchRole` mutation has a server-side guard checking `DEMO_ROLE_SWITCHER` env var -- disabled in production to prevent role self-escalation
+
 ### Error Boundaries
 - `app/components/error-boundary.tsx` - class-based, wraps each route group's Outlet
 - Default fallback with "Try again" button; accepts optional custom fallback prop

@@ -26,18 +26,11 @@ import {
 } from '~/components/ui/command'
 import { Kbd } from '~/components/ui/kbd'
 import { useCurrentUser } from '~/features/auth'
+import { ROLE_OPTIONS } from '~/features/auth/constants'
 
 /** Whether the role switcher UI should be visible. */
 const showRoleSwitcher =
   import.meta.env.DEV || !!import.meta.env.VITE_SHOW_ROLE_SWITCHER
-
-const ROLES: Array<{ value: Doc<'users'>['role']; label: string }> = [
-  { value: 'author', label: 'Author' },
-  { value: 'reviewer', label: 'Reviewer' },
-  { value: 'action_editor', label: 'Action Editor' },
-  { value: 'editor_in_chief', label: 'Editor-in-Chief' },
-  { value: 'admin', label: 'Admin' },
-]
 
 interface NavItem {
   label: string
@@ -81,10 +74,13 @@ const NAV_ITEMS: Array<NavItem> = [
 
 export function CommandPalette({
   isBootstrapped,
+  open,
+  onOpenChange,
 }: {
   isBootstrapped: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }) {
-  const [open, setOpen] = React.useState(false)
   const navigate = useNavigate()
   const switchRole = useMutation(api.users.switchRole)
   const user = useCurrentUser(isBootstrapped)
@@ -93,12 +89,12 @@ export function CommandPalette({
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
-        setOpen((prev) => !prev)
+        onOpenChange(!open)
       }
     }
     document.addEventListener('keydown', down)
     return () => document.removeEventListener('keydown', down)
-  }, [])
+  }, [open, onOpenChange])
 
   const visibleNavItems = NAV_ITEMS.filter((item) => {
     if (!item.roles) return true
@@ -107,7 +103,7 @@ export function CommandPalette({
   })
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} showCloseButton={false}>
+    <CommandDialog open={open} onOpenChange={onOpenChange} showCloseButton={false}>
       <CommandInput placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
@@ -115,7 +111,7 @@ export function CommandPalette({
         {showRoleSwitcher && user && (
           <>
             <CommandGroup heading="Switch Role">
-              {ROLES.map((role) => (
+              {ROLE_OPTIONS.map((role) => (
                 <CommandItem
                   key={role.value}
                   onSelect={() => {
@@ -124,7 +120,7 @@ export function CommandPalette({
                         console.error('Failed to switch role:', error)
                       },
                     )
-                    setOpen(false)
+                    onOpenChange(false)
                   }}
                 >
                   <UserIcon className="size-4" />
@@ -147,7 +143,7 @@ export function CommandPalette({
               key={item.to}
               onSelect={() => {
                 void navigate({ to: item.to })
-                setOpen(false)
+                onOpenChange(false)
               }}
             >
               {item.icon}

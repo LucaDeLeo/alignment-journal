@@ -19,7 +19,13 @@ const roleValidator = v.union(
   v.literal('admin'),
 )
 
-/** Reusable validator for the full user document shape (returned from queries). */
+/**
+ * Reusable validator for the full user document shape (returned from queries).
+ *
+ * TD-004: This duplicates the users table schema shape. When Convex adds
+ * document-level validators (e.g. `v.doc("users")`), migrate to that API
+ * to keep schema and return validators in sync automatically.
+ */
 const userDocValidator = v.object({
   _id: v.id('users'),
   _creationTime: v.number(),

@@ -115,6 +115,7 @@ const showRoleSwitcher =
  */
 function AuthenticatedHeader() {
   const { user, isBootstrapped, bootstrapError } = useBootstrappedUser()
+  const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
 
   if (bootstrapError) {
     return (
@@ -135,8 +136,12 @@ function AuthenticatedHeader() {
           {showRoleSwitcher && <RoleSwitcher currentRole={user.role} />}
         </>
       )}
-      <CommandPaletteTrigger />
-      <CommandPalette isBootstrapped={isBootstrapped} />
+      <CommandPaletteTrigger onToggle={() => setCommandPaletteOpen((prev) => !prev)} />
+      <CommandPalette
+        isBootstrapped={isBootstrapped}
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+      />
       <UserButton />
     </>
   )
@@ -160,25 +165,36 @@ function SignInAutoOpen() {
   return null
 }
 
-function CommandPaletteTrigger() {
+/** Detects whether the user is on a Mac platform. */
+function useIsMac() {
+  const [isMac, setIsMac] = React.useState(true)
+
+  React.useEffect(() => {
+    const nav = navigator as Navigator & {
+      userAgentData?: { platform: string }
+    }
+    setIsMac(
+      nav.platform.startsWith('Mac') ||
+        nav.userAgentData?.platform === 'macOS',
+    )
+  }, [])
+
+  return isMac
+}
+
+function CommandPaletteTrigger({ onToggle }: { onToggle: () => void }) {
+  const isMac = useIsMac()
+
   return (
     <Button
       variant="outline"
       size="sm"
       className="hidden gap-2 text-muted-foreground md:inline-flex"
-      onClick={() => {
-        document.dispatchEvent(
-          new KeyboardEvent('keydown', {
-            key: 'k',
-            metaKey: true,
-            bubbles: true,
-          }),
-        )
-      }}
+      onClick={onToggle}
     >
       <SearchIcon className="size-3.5" />
       <span className="text-xs">Search...</span>
-      <Kbd>⌘K</Kbd>
+      <Kbd>{isMac ? '\u2318K' : 'Ctrl+K'}</Kbd>
     </Button>
   )
 }

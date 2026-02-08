@@ -1,14 +1,6 @@
 import type { Doc } from '../../../convex/_generated/dataModel'
 import { Badge } from '~/components/ui/badge'
-
-/** Maps internal role keys to human-readable display names. */
-const ROLE_DISPLAY_NAMES: Record<Doc<'users'>['role'], string> = {
-  author: 'Author',
-  reviewer: 'Reviewer',
-  action_editor: 'Action Editor',
-  editor_in_chief: 'Editor-in-Chief',
-  admin: 'Admin',
-}
+import { ROLE_DISPLAY_NAMES } from '~/features/auth/constants'
 
 export function RoleBadge({ role }: { role: Doc<'users'>['role'] }) {
   return (

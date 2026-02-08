@@ -199,9 +199,12 @@ FR53: Epic 6 - Notification preview content (recipient, subject, body)
 
 ## Epic List
 
-### Epic 1: Project Foundation & Authentication
+### Epic 1: Project Foundation & Authentication -- COMPLETE
 Users can create accounts, log in, and access role-appropriate views. The application is initialized with the full tech stack, schema, and RBAC enforcement.
 **FRs covered:** FR1, FR2, FR3, FR4
+**Status:** COMPLETE (implementation) | Quality gate: FAIL (auth test coverage)
+**Completed:** 2026-02-08 | **Duration:** ~160 minutes | **Stories:** 4/4 | **Tests:** 29 passing | **Commits:** 10
+**Blocking for Epic 2:** Auth/RBAC test coverage (TD-010) must be resolved before feature work begins.
 
 ### Epic 2: Author Submission & LLM Triage Pipeline
 Authors can submit papers (metadata + PDF upload), receive real-time LLM triage feedback within minutes, and track their submission status through the editorial pipeline.
@@ -229,9 +232,13 @@ The system ships with realistic seed data across all pipeline stages plus the de
 
 ---
 
-## Epic 1: Project Foundation & Authentication
+## Epic 1: Project Foundation & Authentication -- COMPLETE
+
+<!-- Updated from Epic 1 retrospective -->
 
 Users can create accounts, log in, and access role-appropriate views. The application is initialized with the full tech stack, schema, and RBAC enforcement.
+
+> **Completion:** 2026-02-08 | All 4 stories delivered in ~160 minutes. 29 tests passing (100%). Quality gate FAIL due to 4 P0 auth/RBAC test coverage gaps (TD-010). 9 tech debt items logged, 8 resolved within epic. See `RETROSPECTIVE-EPIC-1.md` and `TRACEABILITY-EPIC-1.md` for full analysis.
 
 ### Story 1.1: Initialize Project with Tech Stack
 
