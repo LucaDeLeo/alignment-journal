@@ -1,3 +1,5 @@
+export { ActionEditorSelector } from './action-editor-selector'
+export { AuditTimeline } from './audit-timeline'
 export { EditorSidebar } from './editor-sidebar'
 export {
   EDITOR_ROLES,

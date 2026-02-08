@@ -13,6 +13,8 @@ import { api } from '../../../convex/_generated/api'
 import { formatDate } from '../submissions/status-utils'
 import { StatusTimeline } from '../submissions/status-timeline'
 import { TriageDisplay } from '../submissions/triage-display'
+import { ActionEditorSelector } from './action-editor-selector'
+import { AuditTimeline } from './audit-timeline'
 import { StatusTransitionChip } from './status-transition-chip'
 
 import type { Id } from '../../../convex/_generated/dataModel'
@@ -36,10 +38,13 @@ export function EditorSubmissionDetail({
   const submission = useQuery(api.submissions.getByIdForEditor, {
     submissionId,
   })
+  const currentUser = useQuery(api.users.me, {})
 
   if (submission === undefined) {
     return null
   }
+
+  const isEditorInChief = currentUser?.role === 'editor_in_chief'
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
@@ -99,6 +104,13 @@ export function EditorSubmissionDetail({
             No PDF uploaded
           </span>
         )}
+
+        {/* Action Editor Assignment */}
+        <ActionEditorSelector
+          submissionId={submission._id}
+          currentActionEditorId={submission.actionEditorId}
+          isEditorInChief={isEditorInChief}
+        />
       </div>
 
       <Separator className="my-6" />
@@ -160,6 +172,9 @@ export function EditorSubmissionDetail({
         </h2>
         <StatusTimeline currentStatus={submission.status} />
       </section>
+
+      {/* Audit Trail */}
+      <AuditTimeline submissionId={submissionId} />
     </div>
   )
 }

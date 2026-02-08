@@ -184,6 +184,45 @@ export const listUsers = query({
   }),
 })
 
+const EDITOR_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
+
+/**
+ * Lists users eligible for action editor assignment.
+ * Returns users with editor_in_chief or action_editor roles.
+ * Requires an editor-level role to query.
+ */
+export const listEditors = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id('users'),
+      name: v.string(),
+      affiliation: v.string(),
+      role: roleValidator,
+    }),
+  ),
+  handler: withUser(async (ctx: QueryCtx & { user: Doc<'users'> }) => {
+    if (
+      !EDITOR_ROLES.includes(
+        ctx.user.role as (typeof EDITOR_ROLES)[number],
+      )
+    ) {
+      throw unauthorizedError('Requires editor role')
+    }
+    const allUsers = await ctx.db.query('users').collect()
+    return allUsers
+      .filter(
+        (u) => u.role === 'editor_in_chief' || u.role === 'action_editor',
+      )
+      .map((u) => ({
+        _id: u._id,
+        name: u.name,
+        affiliation: u.affiliation,
+        role: u.role,
+      }))
+  }),
+})
+
 /** Public-safe subset of user fields (excludes PII like email and clerkId). */
 const publicUserValidator = v.object({
   _id: v.id('users'),

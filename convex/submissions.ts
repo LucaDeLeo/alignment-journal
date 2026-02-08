@@ -4,7 +4,11 @@ import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { internal } from './_generated/api'
 import { withAuthor, withUser } from './helpers/auth'
-import { notFoundError, unauthorizedError } from './helpers/errors'
+import {
+  notFoundError,
+  unauthorizedError,
+  validationError,
+} from './helpers/errors'
 import {
   assertTransition,
   submissionStatusValidator,
@@ -455,6 +459,88 @@ export const transitionStatus = mutation({
         actorRole: ctx.user.role,
         action: 'status_transition',
         details: `${submission.status} → ${args.newStatus}`,
+      })
+
+      return null
+    },
+  ),
+})
+
+/**
+ * Assigns an action editor to a submission.
+ * Only editor_in_chief can assign action editors.
+ * Supports both first-time assignment and reassignment.
+ */
+export const assignActionEditor = mutation({
+  args: {
+    submissionId: v.id('submissions'),
+    actionEditorId: v.id('users'),
+  },
+  returns: v.null(),
+  handler: withUser(
+    async (
+      ctx: MutationCtx & { user: Doc<'users'> },
+      args: { submissionId: Id<'submissions'>; actionEditorId: Id<'users'> },
+    ) => {
+      if (ctx.user.role !== 'editor_in_chief') {
+        throw unauthorizedError(
+          'Only Editor-in-Chief can assign action editors',
+        )
+      }
+
+      const submission = await ctx.db.get('submissions', args.submissionId)
+      if (!submission) {
+        throw notFoundError('Submission', args.submissionId)
+      }
+
+      const targetUser = await ctx.db.get('users', args.actionEditorId)
+      if (!targetUser) {
+        throw notFoundError('User', args.actionEditorId)
+      }
+      if (
+        targetUser.role !== 'editor_in_chief' &&
+        targetUser.role !== 'action_editor'
+      ) {
+        throw validationError(
+          'Target user must have editor_in_chief or action_editor role',
+        )
+      }
+
+      const previousEditorId = submission.actionEditorId
+      const isReassignment =
+        previousEditorId !== undefined &&
+        previousEditorId !== args.actionEditorId
+      const now = Date.now()
+
+      // Skip if the same editor is already assigned
+      if (previousEditorId === args.actionEditorId) {
+        return null
+      }
+
+      await ctx.db.patch('submissions', submission._id, {
+        actionEditorId: args.actionEditorId,
+        assignedAt: now,
+        updatedAt: now,
+      })
+
+      let action: string
+      let details: string
+      if (isReassignment) {
+        const previousEditor = await ctx.db.get('users', previousEditorId)
+        const previousName = previousEditor?.name ?? 'Unknown'
+        action = 'action_editor_reassigned'
+        details = `Reassigned from ${previousName} to ${targetUser.name}`
+      } else {
+        action = 'action_editor_assigned'
+        details = `Assigned ${targetUser.name} as action editor`
+      }
+
+      await ctx.scheduler.runAfter(0, internal.audit.logAction, {
+        submissionId: args.submissionId,
+        actorId: ctx.user._id,
+        actorRole: ctx.user.role,
+        action,
+        details,
       })
 
       return null

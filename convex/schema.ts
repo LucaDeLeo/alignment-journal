@@ -173,6 +173,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_submissionId', ['submissionId'])
+    .index('by_submissionId_action', ['submissionId', 'action'])
     .index('by_actorId', ['actorId']),
 
   notifications: defineTable({
