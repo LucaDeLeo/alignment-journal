@@ -11,7 +11,12 @@ import {
   ResizablePanelGroup,
 } from '~/components/ui/resizable'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
-import { PaperPanel, ReviewPanel, WorkspaceHeader } from '~/features/review'
+import {
+  PaperPanel,
+  PaymentCalculator,
+  ReviewPanel,
+  WorkspaceHeader,
+} from '~/features/review'
 
 export const Route = createFileRoute('/review/$submissionId')({
   component: ReviewWorkspacePage,
@@ -144,6 +149,7 @@ function ReviewWorkspacePage() {
           </ResizablePanel>
         </ResizablePanelGroup>
       )}
+      <PaymentCalculator submissionId={submission._id} />
     </div>
   )
 }
