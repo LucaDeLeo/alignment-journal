@@ -51,7 +51,7 @@ development_status:
   # Epic 2: Author Submission & LLM Triage Pipeline
   epic-2: backlog
   2-1-author-submission-form-and-pdf-upload:done
-  2-2-submission-status-tracking: backlog
+  2-2-submission-status-tracking:done
   2-3-pdf-text-extraction-and-triage-orchestration: backlog
   2-4-real-time-triage-progress-and-report-display: backlog
   epic-2-retrospective: optional
