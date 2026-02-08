@@ -1,6 +1,6 @@
 import { AlertTriangleIcon, CheckIcon, LoaderIcon } from 'lucide-react'
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+export type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 export function SaveIndicator({ state }: { state: SaveState }) {
   return (

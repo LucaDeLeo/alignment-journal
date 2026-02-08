@@ -1,7 +1,10 @@
 import { SendIcon } from 'lucide-react'
 
+import { SECTION_DEFS } from './review-form'
 import { countWords } from './review-section-field'
+
 import type { ReviewSections } from './review-form'
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,22 +16,6 @@ import {
   AlertDialogTitle,
 } from '~/components/ui/alert-dialog'
 import { Separator } from '~/components/ui/separator'
-
-const SECTION_LABELS: Record<string, string> = {
-  summary: 'Summary',
-  strengths: 'Strengths',
-  weaknesses: 'Weaknesses',
-  questions: 'Questions',
-  recommendation: 'Recommendation',
-}
-
-const SECTION_ORDER = [
-  'summary',
-  'strengths',
-  'weaknesses',
-  'questions',
-  'recommendation',
-] as const
 
 export function PreSubmitSummary({
   sections,
@@ -43,12 +30,12 @@ export function PreSubmitSummary({
   onConfirm: () => void
   isSubmitting: boolean
 }) {
-  const totalWords = SECTION_ORDER.reduce(
-    (sum, key) => sum + countWords(sections[key] ?? ''),
+  const totalWords = SECTION_DEFS.reduce(
+    (sum, def) => sum + countWords(sections[def.name as keyof ReviewSections] ?? ''),
     0,
   )
-  const allFilled = SECTION_ORDER.every(
-    (key) => (sections[key] ?? '').trim().length > 0,
+  const allFilled = SECTION_DEFS.every(
+    (def) => (sections[def.name as keyof ReviewSections] ?? '').trim().length > 0,
   )
 
   return (
@@ -63,14 +50,14 @@ export function PreSubmitSummary({
         </AlertDialogHeader>
 
         <div className="space-y-4 py-2">
-          {SECTION_ORDER.map((key) => {
-            const content = sections[key] ?? ''
+          {SECTION_DEFS.map((def) => {
+            const content = sections[def.name as keyof ReviewSections] ?? ''
             const wc = countWords(content)
             return (
-              <div key={key}>
+              <div key={def.name}>
                 <div className="flex items-center justify-between">
                   <h4 className="font-sans text-sm font-medium">
-                    {SECTION_LABELS[key]}
+                    {def.label}
                   </h4>
                   <span className="text-xs text-muted-foreground">
                     {wc} {wc === 1 ? 'word' : 'words'}

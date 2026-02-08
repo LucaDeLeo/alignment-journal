@@ -139,7 +139,9 @@ export default defineSchema({
     revision: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index('by_submissionId', ['submissionId']),
+  })
+    .index('by_submissionId', ['submissionId'])
+    .index('by_submissionId_reviewerId', ['submissionId', 'reviewerId']),
 
   discussions: defineTable({
     submissionId: v.id('submissions'),

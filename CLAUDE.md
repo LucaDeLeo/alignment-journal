@@ -24,8 +24,8 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Each feature folder has an `index.ts` barrel export for clean imports from route files
 - Naming: `feature-verb.tsx` (e.g., `submission-form.tsx`, `triage-report-card.tsx`)
 - Shared utilities within a feature: `{domain}-constants.ts`, `status-utils.ts`
-- Established folders: `app/features/submissions/` (11 files), `app/features/auth/`, `app/features/editor/` (14 files), `app/features/admin/` (3 files)
-- Future epics should follow: `app/features/review/`, `app/features/article/`, etc.
+- Established folders: `app/features/submissions/` (11 files), `app/features/auth/`, `app/features/editor/` (14 files), `app/features/review/` (13 files), `app/features/admin/` (3 files)
+- Future epics should follow: `app/features/article/`, etc.
 - Cross-feature reuse: import from sibling feature barrel exports (e.g., `~/features/submissions` in editor components)
 
 ### Config Files
@@ -91,6 +91,21 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - `AuditTimeline` component in `app/features/editor/audit-timeline.tsx` subscribes reactively via `usePaginatedQuery`
 - Action labels mapped in `audit-timeline.tsx` -- when adding new action types, update the `ACTION_LABELS` mapping in the same story
 
+### Auto-Save with Optimistic Concurrency
+- Server: `expectedRevision` arg, compare against `review.revision`, throw `versionConflictError()`, increment on success
+- Client: `localRevisionRef` + `saveMutexRef` for serialized saves + `withOptimisticUpdate` for instant cache
+- Conflict UI: preserve local draft, show "Reload server version" / "Keep my version" buttons
+- Used by: `convex/reviews.ts` `updateSection` + `app/features/review/review-form.tsx`
+
+### Semi-Confidential Identity Gating
+- Server-side only: `convex/discussions.ts` `listBySubmission` computes display names based on viewer role + submission status
+- Authors see pseudonyms ("Reviewer 1") unless submission is ACCEPTED; reviewers/editors always see real names
+- Client never receives real reviewer names when anonymization applies
+
+### Scheduled State Transitions
+- Review auto-lock: `ctx.scheduler.runAfter(15 * 60 * 1000, internal.reviews.lockReview, ...)` -- idempotent, only from `submitted`
+- Edit windows (discussion): server-side `editableUntil` check, no scheduler needed
+
 ### Error Boundaries
 - `app/components/error-boundary.tsx` - class-based, wraps each route group's Outlet
 - Default fallback with "Try again" button; accepts optional custom fallback prop
@@ -129,3 +144,12 @@ Read the index at `.claude/skills/convex/SKILL.md` to find the right skill for y
 - `bun run test` - Vitest
 - `bun run test -- --coverage` - Vitest with v8 coverage report
 - `bun run format` - Prettier
+
+## Dev Environment
+The project is fully set up with Convex deployment and Clerk auth (keys in `.env.local`). After any implementation work (story, feature, bug fix), always verify by running:
+
+1. **Convex push** — `bunx convex dev --once` to ensure all Convex functions typecheck and deploy successfully
+2. **Vite build** — `bun run build` to catch any frontend TypeScript or import errors
+3. **Tests** — `bun run test` to ensure no regressions
+
+If working in a long session, run `bunx convex dev` and `bun dev` in tmux sessions to get continuous feedback via HMR and auto-push. Fix any errors before committing.

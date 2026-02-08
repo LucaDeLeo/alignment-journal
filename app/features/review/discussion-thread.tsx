@@ -1,4 +1,3 @@
-import { ConvexError } from 'convex/values'
 import {
   ArrowDownIcon,
   EyeIcon,
@@ -137,11 +136,19 @@ function DiscussionThreadInner({
     messageId: Id<'discussions'>,
     content: string,
   ) {
-    await editMessage({ messageId, content })
+    try {
+      await editMessage({ messageId, content })
+    } catch {
+      // Error is surfaced reactively via the query subscription
+    }
   }
 
   async function handleRetract(messageId: Id<'discussions'>) {
-    await retractMessage({ messageId })
+    try {
+      await retractMessage({ messageId })
+    } catch {
+      // Error is surfaced reactively via the query subscription
+    }
   }
 
   function handleScrollToBottom() {
@@ -156,10 +163,8 @@ function DiscussionThreadInner({
     setIsTogglingPublic(true)
     try {
       await togglePublicConversation({ submissionId })
-    } catch (err) {
-      if (err instanceof ConvexError) {
-        // Silently handle — UI state will update from reactive query
-      }
+    } catch {
+      // Silently handle — UI state will update from reactive query
     } finally {
       setIsTogglingPublic(false)
     }

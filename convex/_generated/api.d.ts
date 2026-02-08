@@ -20,6 +20,7 @@ import type * as matching from "../matching.js";
 import type * as matchingActions from "../matchingActions.js";
 import type * as pdfExtraction from "../pdfExtraction.js";
 import type * as pdfExtractionActions from "../pdfExtractionActions.js";
+import type * as reviewerAbstracts from "../reviewerAbstracts.js";
 import type * as reviews from "../reviews.js";
 import type * as storage from "../storage.js";
 import type * as submissions from "../submissions.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   matchingActions: typeof matchingActions;
   pdfExtraction: typeof pdfExtraction;
   pdfExtractionActions: typeof pdfExtractionActions;
+  reviewerAbstracts: typeof reviewerAbstracts;
   reviews: typeof reviews;
   storage: typeof storage;
   submissions: typeof submissions;

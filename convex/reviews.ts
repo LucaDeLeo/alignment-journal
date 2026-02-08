@@ -9,7 +9,9 @@ import {
   validationError,
   versionConflictError,
 } from './helpers/errors'
-import { submissionStatusValidator } from './helpers/transitions'
+import {
+  submissionStatusValidator,
+} from './helpers/transitions'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -93,6 +95,7 @@ export const getSubmissionForReviewer = query({
         ),
         abstract: v.string(),
         keywords: v.array(v.string()),
+        status: submissionStatusValidator,
         extractedText: v.optional(v.string()),
         pdfStorageId: v.optional(v.id('_storage')),
         pdfUrl: v.union(v.null(), v.string()),
@@ -141,6 +144,7 @@ export const getSubmissionForReviewer = query({
           authors: submission.authors,
           abstract: submission.abstract,
           keywords: submission.keywords,
+          status: submission.status,
           extractedText: submission.extractedText,
           pdfStorageId: submission.pdfStorageId,
           pdfUrl,
@@ -220,7 +224,7 @@ export const updateSection = mutation({
       ctx: MutationCtx & { user: Doc<'users'> },
       args: {
         submissionId: Id<'submissions'>
-        section: string
+        section: 'summary' | 'strengths' | 'weaknesses' | 'questions' | 'recommendation'
         content: string
         expectedRevision: number
       },

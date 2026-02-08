@@ -106,7 +106,7 @@ function ReviewWorkspacePage() {
       revision={review.revision}
       status={review.status}
       submittedAt={review.submittedAt}
-      reviewStatus={review.status}
+      submissionStatus={submission.status}
     />
   )
 

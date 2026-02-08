@@ -1,5 +1,11 @@
-import { BookOpenIcon, InfoIcon, MessageSquareIcon } from 'lucide-react'
+import {
+  AwardIcon,
+  BookOpenIcon,
+  InfoIcon,
+  MessageSquareIcon,
+} from 'lucide-react'
 
+import { AbstractDraftForm } from './abstract-draft-form'
 import { DiscussionThread } from './discussion-thread'
 import { ReviewForm } from './review-form'
 
@@ -15,7 +21,8 @@ import {
 } from '~/components/ui/tabs'
 
 /**
- * Tabbed review panel with Write Review, Discussion, and Guidelines tabs.
+ * Tabbed review panel with Write Review, Discussion, Guidelines,
+ * and (for ACCEPTED submissions) Abstract tabs.
  * Receives review data as props and renders ReviewForm in the Write tab.
  */
 export function ReviewPanel({
@@ -25,7 +32,7 @@ export function ReviewPanel({
   revision,
   status,
   submittedAt,
-  reviewStatus,
+  submissionStatus,
 }: {
   reviewId: Id<'reviews'>
   submissionId: Id<'submissions'>
@@ -33,8 +40,10 @@ export function ReviewPanel({
   revision: number
   status: string
   submittedAt?: number
-  reviewStatus?: string
+  submissionStatus: string
 }) {
+  const showAbstractTab = submissionStatus === 'ACCEPTED'
+
   return (
     <ScrollArea className="h-full">
       <div className="bg-muted/50 p-4 space-y-4">
@@ -48,6 +57,12 @@ export function ReviewPanel({
               <MessageSquareIcon className="size-3.5" aria-hidden="true" />
               Discussion
             </TabsTrigger>
+            {showAbstractTab && (
+              <TabsTrigger value="abstract" className="flex-1 gap-1.5">
+                <AwardIcon className="size-3.5" aria-hidden="true" />
+                Abstract
+              </TabsTrigger>
+            )}
             <TabsTrigger value="guidelines" className="flex-1 gap-1.5">
               <InfoIcon className="size-3.5" aria-hidden="true" />
               Guidelines
@@ -68,9 +83,15 @@ export function ReviewPanel({
           <TabsContent value="discussion" className="mt-4">
             <DiscussionThread
               submissionId={submissionId}
-              reviewStatus={reviewStatus}
+              reviewStatus={status}
             />
           </TabsContent>
+
+          {showAbstractTab && (
+            <TabsContent value="abstract" className="mt-4">
+              <AbstractDraftForm submissionId={submissionId} />
+            </TabsContent>
+          )}
 
           <TabsContent value="guidelines" className="mt-4">
             <div className="rounded-lg border bg-background p-6">

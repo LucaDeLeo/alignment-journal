@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 
-import { api } from '../../../../convex/_generated/api'
+import { api } from 'convex/_generated/api'
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert'
 import { Button } from '~/components/ui/button'
 import {

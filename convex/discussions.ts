@@ -18,11 +18,7 @@ const EDIT_WINDOW_MS = 5 * 60 * 1000
 /** Maximum character length for discussion messages. */
 const MAX_CONTENT_LENGTH = 5000
 
-/** Viewer's effective discussion role. */
-type ViewerRole = 'author' | 'reviewer' | 'editor'
-
-/** Display role for a message author in the discussion. */
-type DisplayRole = 'author' | 'reviewer' | 'editor'
+type DiscussionRole = 'author' | 'reviewer' | 'editor'
 
 const enrichedMessageValidator = v.object({
   _id: v.id('discussions'),
@@ -68,7 +64,7 @@ export const listBySubmission = query({
       if (!submission) return null
 
       // Determine viewer role
-      let viewerRole: ViewerRole | null = null
+      let viewerRole: DiscussionRole | null = null
       const isAuthor = ctx.user._id === submission.authorId
       let review: Doc<'reviews'> | null = null
 
@@ -159,7 +155,7 @@ export const listBySubmission = query({
         const authorName = msgAuthor?.name ?? 'Unknown'
 
         // Determine display role
-        let displayRole: DisplayRole = 'reviewer'
+        let displayRole: DiscussionRole = 'reviewer'
         if (msgAuthor) {
           if (msgAuthor._id === submission.authorId) {
             displayRole = 'author'

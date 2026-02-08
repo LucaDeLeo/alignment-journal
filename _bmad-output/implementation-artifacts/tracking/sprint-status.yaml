@@ -77,7 +77,7 @@ development_status:
 
   # Epic 5: Reviewer Abstract & Publication
   epic-5: backlog
-  5-1-reviewer-abstract-drafting-and-signing: backlog
+  5-1-reviewer-abstract-drafting-and-signing:done
   5-2-author-acceptance-of-reviewer-abstract: backlog
   5-3-published-article-page-with-dual-abstracts: backlog
   epic-5-retrospective: optional

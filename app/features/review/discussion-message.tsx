@@ -12,7 +12,6 @@ import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Textarea } from '~/components/ui/textarea'
 
-
 export interface DiscussionMessageData {
   _id: Id<'discussions'>
   parentId?: Id<'discussions'>

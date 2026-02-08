@@ -9,7 +9,6 @@ import type { Id } from 'convex/_generated/dataModel'
 import { Button } from '~/components/ui/button'
 import { Textarea } from '~/components/ui/textarea'
 
-
 const MAX_CONTENT_LENGTH = 5000
 const SHOW_COUNTER_THRESHOLD = 4000
 

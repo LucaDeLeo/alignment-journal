@@ -9,7 +9,9 @@ import { PreSubmitSummary } from './pre-submit-summary'
 import { ProgressRing } from './progress-ring'
 import { ReviewSectionField, getSectionStatus } from './review-section-field'
 import { SaveIndicator } from './save-indicator'
+
 import type { Id } from 'convex/_generated/dataModel'
+import type { SaveState } from './save-indicator'
 import { Button } from '~/components/ui/button'
 
 export interface ReviewSections {
@@ -19,8 +21,6 @@ export interface ReviewSections {
   questions?: string
   recommendation?: string
 }
-
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 interface ConflictInfo {
   section: string
