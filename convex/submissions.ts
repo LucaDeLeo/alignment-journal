@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
 
 import { mutation, query } from './_generated/server'
@@ -8,6 +9,9 @@ import { submissionStatusValidator } from './helpers/transitions'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
+import type { SubmissionStatus } from './helpers/transitions'
+
+const EDITOR_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
 
 /**
  * Creates a new submission with status SUBMITTED.
@@ -181,6 +185,155 @@ export const getById = query({
         pdfFileSize: submission.pdfFileSize,
         createdAt: submission.createdAt,
         updatedAt: submission.updatedAt,
+      }
+    },
+  ),
+})
+
+/**
+ * Lists all submissions for editors with pagination and optional status filter.
+ * Enriches each submission with reviewer summary and triage severity.
+ * Requires editor_in_chief, action_editor, or admin role.
+ */
+export const listForEditor = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    status: v.optional(submissionStatusValidator),
+  },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id('submissions'),
+        _creationTime: v.number(),
+        title: v.string(),
+        status: submissionStatusValidator,
+        authorId: v.id('users'),
+        actionEditorId: v.optional(v.id('users')),
+        updatedAt: v.number(),
+        createdAt: v.number(),
+        reviewerSummary: v.union(
+          v.null(),
+          v.object({
+            total: v.number(),
+            accepted: v.number(),
+            submitted: v.number(),
+            overdue: v.number(),
+          }),
+        ),
+        highestTriageSeverity: v.union(
+          v.null(),
+          v.literal('low'),
+          v.literal('medium'),
+          v.literal('high'),
+        ),
+      }),
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: withUser(
+    async (
+      ctx: QueryCtx & { user: Doc<'users'> },
+      args: {
+        paginationOpts: { numItems: number; cursor: string | null }
+        status?: SubmissionStatus
+      },
+    ) => {
+      if (
+        !EDITOR_ROLES.includes(
+          ctx.user.role as (typeof EDITOR_ROLES)[number],
+        )
+      ) {
+        throw unauthorizedError(
+          'Requires editor, action editor, or admin role',
+        )
+      }
+
+      const baseQuery = ctx.db.query('submissions')
+      const results = args.status
+        ? await baseQuery
+            .withIndex('by_status', (idx) =>
+              idx.eq('status', args.status!),
+            )
+            .paginate(args.paginationOpts)
+        : await baseQuery
+            .paginate(args.paginationOpts)
+
+      const SEVERITY_ORDER = { high: 3, medium: 2, low: 1 } as const
+
+      // Sort page by updatedAt descending (most recently changed first)
+      const sortedPage = [...results.page].sort(
+        (a, b) => b.updatedAt - a.updatedAt,
+      )
+
+      const enrichedPage = await Promise.all(
+        sortedPage.map(async (s) => {
+          // Reviewer summary
+          const reviews = await ctx.db
+            .query('reviews')
+            .withIndex('by_submissionId', (idx) =>
+              idx.eq('submissionId', s._id),
+            )
+            .collect()
+          const reviewerSummary =
+            reviews.length > 0
+              ? {
+                  total: reviews.length,
+                  accepted: reviews.filter((r) => r.status !== 'assigned')
+                    .length,
+                  submitted: reviews.filter(
+                    (r) =>
+                      r.status === 'submitted' || r.status === 'locked',
+                  ).length,
+                  overdue: reviews.filter(
+                    (r) =>
+                      r.status === 'in_progress' &&
+                      Date.now() - r.updatedAt > 28 * 24 * 60 * 60 * 1000,
+                  ).length,
+                }
+              : null
+
+          // Triage severity (highest across complete reports)
+          const triageReports = await ctx.db
+            .query('triageReports')
+            .withIndex('by_submissionId', (idx) =>
+              idx.eq('submissionId', s._id),
+            )
+            .collect()
+          const completedReports = triageReports.filter(
+            (r) => r.status === 'complete' && r.result,
+          )
+          let highestTriageSeverity: 'low' | 'medium' | 'high' | null =
+            null
+          for (const report of completedReports) {
+            const sev = report.result!.severity
+            if (
+              !highestTriageSeverity ||
+              SEVERITY_ORDER[sev] >
+                SEVERITY_ORDER[highestTriageSeverity]
+            ) {
+              highestTriageSeverity = sev
+            }
+          }
+
+          return {
+            _id: s._id,
+            _creationTime: s._creationTime,
+            title: s.title,
+            status: s.status,
+            authorId: s.authorId,
+            actionEditorId: s.actionEditorId,
+            updatedAt: s.updatedAt,
+            createdAt: s.createdAt,
+            reviewerSummary,
+            highestTriageSeverity,
+          }
+        }),
+      )
+
+      return {
+        ...results,
+        page: enrichedPage,
       }
     },
   ),
