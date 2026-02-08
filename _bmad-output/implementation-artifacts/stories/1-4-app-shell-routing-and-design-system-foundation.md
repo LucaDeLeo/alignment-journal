@@ -9,7 +9,7 @@
 ## Status
 
 **Epic:** 1 - Project Foundation & Authentication
-**Status:** ready
+**Status:** done
 **Priority:** High (establishes navigation and visual foundation for all subsequent stories)
 **Depends on:** Story 1.3 (user management, role badge, role switcher, useCurrentUser hook)
 
@@ -326,3 +326,48 @@ function EditorLayout() {
 - Import conventions: value imports before type imports, separate `import type` statements.
 - Use `Array<T>` syntax, not `T[]`.
 - All new route files should use `createFileRoute` from `@tanstack/react-router`.
+
+## Senior Developer Review (AI)
+
+**Review Date:** 2026-02-08
+**Reviewer:** Senior Developer Review (AI)
+**Outcome:** APPROVED_WITH_IMPROVEMENTS
+**TypeScript:** Pass | **ESLint:** Pass
+
+### AC Validation
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC1: Role-based route groups | IMPLEMENTED | All 5 route groups at `/editor/`, `/review/`, `/submit/`, `/article/`, `/admin/` with layout routes, data-mode attributes, ErrorBoundary wrapping, placeholder pages with empty states |
+| AC2: Mode-specific design tokens | IMPLEMENTED | `globals.css`: status colors (green, amber, red, blue, gray), shadow system (xs-xl), 5 data-mode overrides in oklch |
+| AC3: cmd+K command palette | IMPLEMENTED | `command-palette.tsx`: CommandDialog with Switch Role (gated), Go To (role-aware), Search (placeholder); global cmd+K/ctrl+K listener |
+| AC4: Skeleton loading states | IMPLEMENTED | `skeleton.tsx` primitive + `route-skeleton.tsx` with 3 variants (default/centered/sidebar) + CSS shimmer + prefers-reduced-motion |
+| AC5: Error boundaries | IMPLEMENTED | `error-boundary.tsx`: class-based ErrorBoundary with styled fallback, "Try again" reset, configurable fallback prop |
+| AC6: Enhanced root with trigger | IMPLEMENTED | `__root.tsx`: CommandPaletteTrigger in header with SearchIcon, "Search..." label, Kbd hint |
+
+### Issues Found
+
+#### Medium (5)
+
+- **M1: ErrorBoundary custom fallback has no reset mechanism** [`app/components/error-boundary.tsx:38-39`] -- Custom `fallback` prop is `ReactNode`, not a render function receiving `onReset`. Custom fallbacks cannot clear error state.
+- **M2: CommandPaletteTrigger uses synthetic KeyboardEvent** [`app/routes/__root.tsx:169-175`] -- Dispatches fake KeyboardEvent instead of sharing state or callback. Fragile coupling that breaks if event chain changes.
+- **M3: ROLES constant duplicated across 3 files** [`app/components/command-palette.tsx:34`, `app/features/auth/role-switcher.tsx:16`, `app/features/auth/role-badge.tsx:5`] -- Same role-to-label mapping in three places violates DRY.
+- **M4: Type assertion bypasses safety in role checks** [`app/routes/editor/route.tsx:29` and all protected layouts] -- `user.role as (typeof ALLOWED_ROLES)[number]` casts away type narrowing. Use a type guard function instead.
+- **M5: Kbd hints show route paths, not keyboard shortcuts** [`app/components/command-palette.tsx:155`] -- `<Kbd>{item.to}</Kbd>` renders URL paths inside keyboard key elements, misleading for accessibility.
+
+#### Low (3)
+
+- **L1: skeleton-shimmer class applied redundantly** [`app/components/route-skeleton.tsx`] -- Skeleton component already includes `skeleton-shimmer`; RouteSkeleton adds it again.
+- **L2: showRoleSwitcher logic duplicated** [`app/components/command-palette.tsx:31`, `app/routes/__root.tsx:109`] -- Same env check in two files.
+- **L3: Trigger always shows Mac shortcut** [`app/routes/__root.tsx:181`] -- Hardcoded `⌘K` with no platform detection for Ctrl+K.
+
+### Action Items
+
+These are tracked as tech debt (TD-005 through TD-009) and should be addressed in follow-up work. None block subsequent stories.
+
+## Change Log
+
+| Date | Change | Author |
+|------|--------|--------|
+| 2026-02-08 | Story implemented (route groups, design tokens, command palette, skeletons, error boundaries) | Dev Agent |
+| 2026-02-08 | Senior Developer Review: APPROVED_WITH_IMPROVEMENTS -- 5 medium, 3 low issues identified | AI Reviewer |

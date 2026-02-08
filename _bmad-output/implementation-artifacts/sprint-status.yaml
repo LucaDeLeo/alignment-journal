@@ -45,7 +45,7 @@ development_status:
   1-1-initialize-project-with-tech-stack: backlog
   1-2-define-data-schema-and-core-helpers: backlog
   1-3-user-registration-login-and-role-management: backlog
-  1-4-app-shell-routing-and-design-system-foundation: backlog
+  1-4-app-shell-routing-and-design-system-foundation: done
   epic-1-retrospective: optional
 
   # Epic 2: Author Submission & LLM Triage Pipeline

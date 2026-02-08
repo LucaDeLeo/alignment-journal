@@ -38,6 +38,28 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Value imports before type imports
 - `Array<T>` syntax (not `T[]`)
 
+### Route Layout Pattern
+- Route groups: `/editor/`, `/review/`, `/submit/`, `/article/`, `/admin/`
+- Each group has `route.tsx` (layout) + `index.tsx` (page) + optional `$param.tsx`
+- Layout wraps `<Outlet />` in `<ErrorBoundary>` + `<React.Suspense fallback={<RouteSkeleton />}>`
+- Mode-specific styling via `data-mode` attribute on layout wrapper div
+- Auth guard: `beforeLoad` checks `context.userId`, layout component checks role via `useBootstrappedUser`
+- `/article/` is public (no auth guard); all others require authentication
+
+### Design System Modes
+- CSS custom property overrides via `[data-mode]` attribute selectors in `globals.css`
+- Modes: `editor` (cool), `reviewer` (neutral), `author` (warm-neutral), `reader` (warm cream), `admin` (cool)
+- Mode overrides cascade to all shadcn/ui components via CSS variable inheritance
+
+### Skeleton Loading
+- `app/components/ui/skeleton.tsx` - base shimmer primitive (CSS-only, `skeleton-shimmer` class)
+- `app/components/route-skeleton.tsx` - route-level skeleton with `default`/`centered`/`sidebar` variants
+- Respects `prefers-reduced-motion` (static skeleton when reduced motion preferred)
+
+### Error Boundaries
+- `app/components/error-boundary.tsx` - class-based, wraps each route group's Outlet
+- Default fallback with "Try again" button; accepts optional custom fallback prop
+
 ### Fonts
 - Satoshi (sans): self-hosted woff2 in `public/fonts/satoshi/`
 - JetBrains Mono (mono): self-hosted woff2 in `public/fonts/jetbrains-mono/`
