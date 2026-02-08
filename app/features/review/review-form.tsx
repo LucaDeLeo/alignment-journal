@@ -6,6 +6,7 @@ import { useMutation } from 'convex/react'
 
 import { api } from 'convex/_generated/api'
 import { PreSubmitSummary } from './pre-submit-summary'
+import { ProgressRing } from './progress-ring'
 import { ReviewSectionField, getSectionStatus } from './review-section-field'
 import { SaveIndicator } from './save-indicator'
 import type { Id } from 'convex/_generated/dataModel'
@@ -122,6 +123,8 @@ export function ReviewForm({
   const timersRef = React.useRef<
     Partial<Record<string, ReturnType<typeof setTimeout>>>
   >({})
+  // Track sections with in-flight save requests to prevent sync overwrites
+  const pendingSavesRef = React.useRef<Partial<Record<string, boolean>>>({})
 
   const editCountdown = useEditCountdown(submittedAt)
   const isLocked = status === 'locked'
@@ -136,8 +139,8 @@ export function ReviewForm({
         const next = { ...prev }
         for (const def of SECTION_DEFS) {
           const key = def.name as keyof ReviewSections
-          // Only update if no pending timer for this section
-          if (!timersRef.current[key]) {
+          // Only update if no pending timer or in-flight save for this section
+          if (!timersRef.current[key] && !pendingSavesRef.current[key]) {
             next[key] = serverSections[key]
           }
         }
@@ -194,6 +197,7 @@ export function ReviewForm({
   const saveSection = React.useCallback(
     async (section: string, content: string) => {
       setSaveStates((prev) => ({ ...prev, [section]: 'saving' }))
+      pendingSavesRef.current[section] = true
       try {
         const result = await updateSectionMutation({
           submissionId,
@@ -219,6 +223,8 @@ export function ReviewForm({
         } else {
           setSaveStates((prev) => ({ ...prev, [section]: 'error' }))
         }
+      } finally {
+        delete pendingSavesRef.current[section]
       }
     },
     [submissionId, updateSectionMutation],
@@ -291,6 +297,12 @@ export function ReviewForm({
     return getSectionStatus(def.name, val) === 'complete'
   }).length
 
+  // All sections must have non-empty content to allow submission (matches server validation)
+  const allSectionsNonEmpty = SECTION_DEFS.every((def) => {
+    const val = localSections[def.name as keyof ReviewSections] ?? ''
+    return val.trim().length > 0
+  })
+
   // Locked state
   if (isLocked) {
     return (
@@ -341,7 +353,10 @@ export function ReviewForm({
   return (
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
-        <SaveIndicator state={globalSaveState} />
+        <div className="flex items-center gap-2">
+          <ProgressRing completed={completedCount} total={5} />
+          <SaveIndicator state={globalSaveState} />
+        </div>
         <span className="text-xs text-muted-foreground">
           {completedCount}/5 sections complete
         </span>
@@ -387,7 +402,7 @@ export function ReviewForm({
         <Button
           onClick={() => setShowSubmitDialog(true)}
           className="w-full gap-1.5"
-          disabled={completedCount < 5}
+          disabled={!allSectionsNonEmpty}
         >
           <SendIcon className="size-3.5" />
           Submit Review

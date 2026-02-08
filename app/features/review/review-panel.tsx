@@ -1,8 +1,6 @@
 import { BookOpenIcon, InfoIcon, MessageSquareIcon } from 'lucide-react'
 
-import { ProgressRing } from './progress-ring'
 import { ReviewForm } from './review-form'
-import { getSectionStatus } from './review-section-field'
 
 import type { Id } from 'convex/_generated/dataModel'
 import type { ReviewSections } from './review-form'
@@ -14,14 +12,6 @@ import {
   TabsList,
   TabsTrigger,
 } from '~/components/ui/tabs'
-
-const SECTION_KEYS = [
-  'summary',
-  'strengths',
-  'weaknesses',
-  'questions',
-  'recommendation',
-] as const
 
 /**
  * Tabbed review panel with Write Review, Discussion, and Guidelines tabs.
@@ -42,11 +32,6 @@ export function ReviewPanel({
   status: string
   submittedAt?: number
 }) {
-  const completedCount = SECTION_KEYS.filter((key) => {
-    const val = sections[key] ?? ''
-    return getSectionStatus(key, val) === 'complete'
-  }).length
-
   return (
     <ScrollArea className="h-full">
       <div className="bg-muted/50 p-4 space-y-4">
@@ -67,9 +52,6 @@ export function ReviewPanel({
           </TabsList>
 
           <TabsContent value="write" className="mt-4">
-            <div className="flex items-center gap-2 mb-4">
-              <ProgressRing completed={completedCount} total={5} />
-            </div>
             <ReviewForm
               sections={sections}
               reviewId={reviewId}

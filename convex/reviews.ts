@@ -291,6 +291,10 @@ export const submitReview = mutation({
         throw notFoundError('Review')
       }
 
+      if (review.revision !== args.expectedRevision) {
+        throw versionConflictError()
+      }
+
       if (review.status !== 'in_progress') {
         throw validationError('Review can only be submitted from in_progress status')
       }
