@@ -1,8 +1,8 @@
 "use node";
 
 import { v } from 'convex/values'
-import { extractText } from 'unpdf'
 import { generateObject } from 'ai'
+import type { CoreMessage } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 
@@ -14,16 +14,15 @@ import { internal } from './_generated/api'
 // ---------------------------------------------------------------------------
 
 const MAX_ATTEMPTS = 3
-const MAX_TEXT_LENGTH = 100_000
 
 /** Maximum length for LLM-generated string fields (AC7 sanitization). */
 const MAX_LLM_FIELD_LENGTH = 5_000
 
 // ---------------------------------------------------------------------------
-// Zod schema for generateObject structured output
+// Zod schema for generateObject structured output (all 4 dimensions)
 // ---------------------------------------------------------------------------
 
-const triageResultSchema = z.object({
+const dimensionSchema = z.object({
   finding: z
     .string()
     .max(MAX_LLM_FIELD_LENGTH)
@@ -39,11 +38,20 @@ const triageResultSchema = z.object({
     .describe('Editor-facing recommendation based on the finding'),
 })
 
+const triageResultSchema = z.object({
+  scope: dimensionSchema.describe('Scope fit analysis'),
+  formatting: dimensionSchema.describe('Formatting and completeness analysis'),
+  citations: dimensionSchema.describe('Citation quality analysis'),
+  claims: dimensionSchema.describe('Technical claims and evidence analysis'),
+})
+
 // ---------------------------------------------------------------------------
-// LLM system prompts (one per triage pass)
+// Combined system prompt
 // ---------------------------------------------------------------------------
 
-const SCOPE_SYSTEM_PROMPT = `You are a triage assistant for the Alignment Journal, a peer-reviewed journal focused on theoretical AI alignment research. Analyze the following paper text and assess its scope fit.
+const TRIAGE_SYSTEM_PROMPT = `You are a triage assistant for the Alignment Journal, a peer-reviewed journal focused on theoretical AI alignment research. You will analyze the attached PDF paper across four dimensions and return structured results for each.
+
+## 1. Scope Fit
 
 The journal's focus areas are:
 - Theoretical AI alignment: agency, understanding, asymptotic behavior of advanced synthetic agents
@@ -51,9 +59,9 @@ The journal's focus areas are:
 - Empirical work is welcome but no emphasis on SOTA benchmarks
 - Out of scope: AI governance, deployment, applied mechinterp, evaluations, societal impact
 
-Assess whether the paper falls within scope. Consider the paper's core thesis, methodology, and contribution area.`
+Assess whether the paper falls within scope. Consider the paper's core thesis, methodology, and contribution area.
 
-const FORMATTING_SYSTEM_PROMPT = `You are a triage assistant for the Alignment Journal. Analyze the following paper text for formatting and completeness issues.
+## 2. Formatting & Completeness
 
 Check for:
 - Abstract present and well-structured
@@ -63,9 +71,9 @@ Check for:
 - Author affiliations included
 - Figures/tables referenced in text
 
-Report any formatting or completeness issues found.`
+Report any formatting or completeness issues found.
 
-const CITATIONS_SYSTEM_PROMPT = `You are a triage assistant for the Alignment Journal. Analyze the following paper text for citation quality.
+## 3. Citation Quality
 
 Check for:
 - Extract key citations referenced in the paper
@@ -73,9 +81,9 @@ Check for:
 - Identify citations that may be unresolvable (non-standard format, missing from common databases)
 - Note the total approximate citation count
 
-Report on citation quality and any issues found.`
+Report on citation quality and any issues found.
 
-const CLAIMS_SYSTEM_PROMPT = `You are a triage assistant for the Alignment Journal. Analyze the following paper text for technical claims and evidence quality.
+## 4. Technical Claims & Evidence
 
 Check for:
 - Identify the key technical claims made by the paper (2-5 main claims)
@@ -109,10 +117,10 @@ function sanitizeResult(result: {
 }
 
 // ---------------------------------------------------------------------------
-// Internal actions: triage passes
+// Single triage action: sends PDF to Haiku, gets all 4 analyses at once
 // ---------------------------------------------------------------------------
 
-export const runScope = internalAction({
+export const runTriage = internalAction({
   args: {
     submissionId: v.id('submissions'),
     triageRunId: v.string(),
@@ -122,268 +130,72 @@ export const runScope = internalAction({
   returns: v.null(),
   handler: async (ctx, args) => {
     const attempt = args.attemptCount ?? 1
-    const idempotencyKey = `${args.submissionId}_${args.triageRunId}_scope`
 
     try {
-      // 1. Mark running BEFORE PDF fetch (fixes retry tracking)
-      await ctx.runMutation(internal.triage.markRunning, {
-        idempotencyKey,
+      // 1. Mark all 4 reports as running
+      await ctx.runMutation(internal.triage.markAllRunning, {
+        submissionId: args.submissionId,
+        triageRunId: args.triageRunId,
         attemptCount: attempt,
       })
 
-      // 2. Fetch PDF and extract text
+      // 2. Fetch PDF bytes from Convex storage
       const pdfUrl = await ctx.storage.getUrl(args.pdfStorageId)
       if (!pdfUrl) throw new Error('PDF not found in storage')
       const pdfResponse = await fetch(pdfUrl)
       const pdfBuffer = await pdfResponse.arrayBuffer()
-      const { text: extractedText } = await extractText(
-        new Uint8Array(pdfBuffer),
-        { mergePages: true },
-      )
 
-      // 3. Handle empty text
-      if (!extractedText || extractedText.trim().length === 0) {
-        await ctx.runMutation(internal.triage.writeResult, {
-          idempotencyKey,
-          result: {
-            finding: 'No extractable text found in the PDF',
-            severity: 'high' as const,
-            recommendation:
-              'Request the author to resubmit with a text-based PDF',
+      // 3. Send PDF directly to Haiku — one call for all 4 dimensions
+      const { object: results } = await generateObject({
+        model: anthropic('claude-haiku-4-5-20251001'),
+        schema: triageResultSchema,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Analyze the attached PDF paper across all four triage dimensions: scope fit, formatting & completeness, citation quality, and technical claims & evidence.',
+              },
+              {
+                type: 'file',
+                data: new Uint8Array(pdfBuffer),
+                mimeType: 'application/pdf',
+              },
+            ],
           },
-          completedAt: Date.now(),
-        })
-        await ctx.scheduler.runAfter(0, internal.triageActions.runFormatting, {
-          submissionId: args.submissionId,
-          triageRunId: args.triageRunId,
-          extractedText: '',
-        })
-        return null
-      }
-
-      // 4. Truncate text and call LLM
-      const truncatedText = extractedText.slice(0, MAX_TEXT_LENGTH)
-
-      const { object: result } = await generateObject({
-        model: anthropic('claude-sonnet-4-5-20250929'),
-        schema: triageResultSchema,
-        system: SCOPE_SYSTEM_PROMPT,
-        prompt: `Analyze the following paper:\n\n${truncatedText}`,
+        ] satisfies Array<CoreMessage>,
+        system: TRIAGE_SYSTEM_PROMPT,
       })
 
-      // 5. Write sanitized result
-      await ctx.runMutation(internal.triage.writeResult, {
-        idempotencyKey,
-        result: sanitizeResult(result),
-        completedAt: Date.now(),
-      })
-
-      // 6. Schedule next pass
-      await ctx.scheduler.runAfter(0, internal.triageActions.runFormatting, {
+      // 4. Write all 4 sanitized results + transition to TRIAGE_COMPLETE
+      await ctx.runMutation(internal.triage.writeAllResults, {
         submissionId: args.submissionId,
         triageRunId: args.triageRunId,
-        extractedText: truncatedText,
+        results: {
+          scope: sanitizeResult(results.scope),
+          formatting: sanitizeResult(results.formatting),
+          citations: sanitizeResult(results.citations),
+          claims: sanitizeResult(results.claims),
+        },
       })
     } catch (error) {
       if (attempt < MAX_ATTEMPTS) {
+        // Retry with exponential backoff
         const delayMs = 1000 * Math.pow(2, attempt - 1)
-        await ctx.scheduler.runAfter(delayMs, internal.triageActions.runScope, {
+        await ctx.scheduler.runAfter(delayMs, internal.triageActions.runTriage, {
           ...args,
           attemptCount: attempt + 1,
         })
       } else {
-        await ctx.runMutation(internal.triage.markFailed, {
-          idempotencyKey,
-          lastError: 'LLM analysis failed for scope pass',
-          attemptCount: attempt,
-        })
-        // Continue pipeline even on terminal failure
-        await ctx.scheduler.runAfter(0, internal.triageActions.runFormatting, {
+        // Terminal failure — mark all reports as failed
+        const message =
+          error instanceof Error ? error.message : 'Unknown triage error'
+        await ctx.runMutation(internal.triage.markAllFailed, {
           submissionId: args.submissionId,
           triageRunId: args.triageRunId,
-          extractedText: '',
-        })
-      }
-    }
-    return null
-  },
-})
-
-export const runFormatting = internalAction({
-  args: {
-    submissionId: v.id('submissions'),
-    triageRunId: v.string(),
-    extractedText: v.string(),
-    attemptCount: v.optional(v.number()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const attempt = args.attemptCount ?? 1
-    const idempotencyKey = `${args.submissionId}_${args.triageRunId}_formatting`
-
-    try {
-      await ctx.runMutation(internal.triage.markRunning, {
-        idempotencyKey,
-        attemptCount: attempt,
-      })
-
-      const { object: result } = await generateObject({
-        model: anthropic('claude-sonnet-4-5-20250929'),
-        schema: triageResultSchema,
-        system: FORMATTING_SYSTEM_PROMPT,
-        prompt: `Analyze the following paper:\n\n${args.extractedText}`,
-      })
-
-      await ctx.runMutation(internal.triage.writeResult, {
-        idempotencyKey,
-        result: sanitizeResult(result),
-        completedAt: Date.now(),
-      })
-
-      await ctx.scheduler.runAfter(0, internal.triageActions.runCitations, {
-        submissionId: args.submissionId,
-        triageRunId: args.triageRunId,
-        extractedText: args.extractedText,
-      })
-    } catch (error) {
-      if (attempt < MAX_ATTEMPTS) {
-        const delayMs = 1000 * Math.pow(2, attempt - 1)
-        await ctx.scheduler.runAfter(delayMs, internal.triageActions.runFormatting, {
-          ...args,
-          attemptCount: attempt + 1,
-        })
-      } else {
-        await ctx.runMutation(internal.triage.markFailed, {
-          idempotencyKey,
-          lastError: 'LLM analysis failed for formatting pass',
+          lastError: message,
           attemptCount: attempt,
-        })
-        // Continue pipeline even on terminal failure
-        await ctx.scheduler.runAfter(0, internal.triageActions.runCitations, {
-          submissionId: args.submissionId,
-          triageRunId: args.triageRunId,
-          extractedText: args.extractedText,
-        })
-      }
-    }
-    return null
-  },
-})
-
-export const runCitations = internalAction({
-  args: {
-    submissionId: v.id('submissions'),
-    triageRunId: v.string(),
-    extractedText: v.string(),
-    attemptCount: v.optional(v.number()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const attempt = args.attemptCount ?? 1
-    const idempotencyKey = `${args.submissionId}_${args.triageRunId}_citations`
-
-    try {
-      await ctx.runMutation(internal.triage.markRunning, {
-        idempotencyKey,
-        attemptCount: attempt,
-      })
-
-      const { object: result } = await generateObject({
-        model: anthropic('claude-sonnet-4-5-20250929'),
-        schema: triageResultSchema,
-        system: CITATIONS_SYSTEM_PROMPT,
-        prompt: `Analyze the following paper:\n\n${args.extractedText}`,
-      })
-
-      await ctx.runMutation(internal.triage.writeResult, {
-        idempotencyKey,
-        result: sanitizeResult(result),
-        completedAt: Date.now(),
-      })
-
-      await ctx.scheduler.runAfter(0, internal.triageActions.runClaims, {
-        submissionId: args.submissionId,
-        triageRunId: args.triageRunId,
-        extractedText: args.extractedText,
-      })
-    } catch (error) {
-      if (attempt < MAX_ATTEMPTS) {
-        const delayMs = 1000 * Math.pow(2, attempt - 1)
-        await ctx.scheduler.runAfter(delayMs, internal.triageActions.runCitations, {
-          ...args,
-          attemptCount: attempt + 1,
-        })
-      } else {
-        await ctx.runMutation(internal.triage.markFailed, {
-          idempotencyKey,
-          lastError: 'LLM analysis failed for citations pass',
-          attemptCount: attempt,
-        })
-        // Continue pipeline even on terminal failure
-        await ctx.scheduler.runAfter(0, internal.triageActions.runClaims, {
-          submissionId: args.submissionId,
-          triageRunId: args.triageRunId,
-          extractedText: args.extractedText,
-        })
-      }
-    }
-    return null
-  },
-})
-
-export const runClaims = internalAction({
-  args: {
-    submissionId: v.id('submissions'),
-    triageRunId: v.string(),
-    extractedText: v.string(),
-    attemptCount: v.optional(v.number()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const attempt = args.attemptCount ?? 1
-    const idempotencyKey = `${args.submissionId}_${args.triageRunId}_claims`
-
-    try {
-      await ctx.runMutation(internal.triage.markRunning, {
-        idempotencyKey,
-        attemptCount: attempt,
-      })
-
-      const { object: result } = await generateObject({
-        model: anthropic('claude-sonnet-4-5-20250929'),
-        schema: triageResultSchema,
-        system: CLAIMS_SYSTEM_PROMPT,
-        prompt: `Analyze the following paper:\n\n${args.extractedText}`,
-      })
-
-      await ctx.runMutation(internal.triage.writeResult, {
-        idempotencyKey,
-        result: sanitizeResult(result),
-        completedAt: Date.now(),
-      })
-
-      // Final pass — check if all passes are complete
-      await ctx.runMutation(internal.triage.completeTriageRun, {
-        submissionId: args.submissionId,
-        triageRunId: args.triageRunId,
-      })
-    } catch (error) {
-      if (attempt < MAX_ATTEMPTS) {
-        const delayMs = 1000 * Math.pow(2, attempt - 1)
-        await ctx.scheduler.runAfter(delayMs, internal.triageActions.runClaims, {
-          ...args,
-          attemptCount: attempt + 1,
-        })
-      } else {
-        await ctx.runMutation(internal.triage.markFailed, {
-          idempotencyKey,
-          lastError: 'LLM analysis failed for claims pass',
-          attemptCount: attempt,
-        })
-        // Final pass failed — still attempt completion (other passes may be done)
-        await ctx.runMutation(internal.triage.completeTriageRun, {
-          submissionId: args.submissionId,
-          triageRunId: args.triageRunId,
         })
       }
     }

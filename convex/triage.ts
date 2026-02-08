@@ -132,7 +132,7 @@ export const startTriageInternal = internalMutation({
       throw notFoundError('PDF storage ID')
     }
 
-    await ctx.scheduler.runAfter(0, internal.triageActions.runScope, {
+    await ctx.scheduler.runAfter(0, internal.triageActions.runTriage, {
       submissionId: args.submissionId,
       triageRunId,
       pdfStorageId: submission.pdfStorageId,
@@ -182,7 +182,7 @@ export const startTriage = mutation({
         throw notFoundError('PDF storage ID')
       }
 
-      await ctx.scheduler.runAfter(0, internal.triageActions.runScope, {
+      await ctx.scheduler.runAfter(0, internal.triageActions.runTriage, {
         submissionId: args.submissionId,
         triageRunId,
         pdfStorageId: submission.pdfStorageId,
@@ -265,6 +265,115 @@ export const markFailed = internalMutation({
       lastError: args.lastError,
       attemptCount: args.attemptCount,
     })
+    return null
+  },
+})
+
+// ---------------------------------------------------------------------------
+// Batch mutations: used by the single runTriage action
+// ---------------------------------------------------------------------------
+
+export const markAllRunning = internalMutation({
+  args: {
+    submissionId: v.id('submissions'),
+    triageRunId: v.string(),
+    attemptCount: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    for (const passName of PASS_NAMES) {
+      const idempotencyKey = `${args.submissionId}_${args.triageRunId}_${passName}`
+      const report = await ctx.db
+        .query('triageReports')
+        .withIndex('by_idempotencyKey', (q) =>
+          q.eq('idempotencyKey', idempotencyKey),
+        )
+        .unique()
+      if (!report) continue
+      // Guard: never overwrite a terminal state
+      if (report.status === 'complete' || report.status === 'failed') continue
+      await ctx.db.patch('triageReports', report._id, {
+        status: 'running',
+        attemptCount: args.attemptCount,
+      })
+    }
+    return null
+  },
+})
+
+export const writeAllResults = internalMutation({
+  args: {
+    submissionId: v.id('submissions'),
+    triageRunId: v.string(),
+    results: v.object({
+      scope: triageResultValidator,
+      formatting: triageResultValidator,
+      citations: triageResultValidator,
+      claims: triageResultValidator,
+    }),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now()
+
+    for (const passName of PASS_NAMES) {
+      const idempotencyKey = `${args.submissionId}_${args.triageRunId}_${passName}`
+      const report = await ctx.db
+        .query('triageReports')
+        .withIndex('by_idempotencyKey', (q) =>
+          q.eq('idempotencyKey', idempotencyKey),
+        )
+        .unique()
+      if (!report) continue
+      if (report.status === 'complete') continue
+      await ctx.db.patch('triageReports', report._id, {
+        status: 'complete',
+        result: args.results[passName],
+        completedAt: now,
+      })
+    }
+
+    // Transition submission to TRIAGE_COMPLETE
+    const submission = await ctx.db.get('submissions', args.submissionId)
+    if (submission) {
+      if (submission.status === 'TRIAGE_COMPLETE') return null
+      assertTransition(submission.status, 'TRIAGE_COMPLETE')
+      await ctx.db.patch('submissions', args.submissionId, {
+        status: 'TRIAGE_COMPLETE',
+        updatedAt: now,
+      })
+    }
+
+    return null
+  },
+})
+
+export const markAllFailed = internalMutation({
+  args: {
+    submissionId: v.id('submissions'),
+    triageRunId: v.string(),
+    lastError: v.string(),
+    attemptCount: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    for (const passName of PASS_NAMES) {
+      const idempotencyKey = `${args.submissionId}_${args.triageRunId}_${passName}`
+      const report = await ctx.db
+        .query('triageReports')
+        .withIndex('by_idempotencyKey', (q) =>
+          q.eq('idempotencyKey', idempotencyKey),
+        )
+        .unique()
+      if (!report) continue
+      // Guard: never overwrite a completed report
+      if (report.status === 'complete') continue
+      await ctx.db.patch('triageReports', report._id, {
+        status: 'failed',
+        lastError: args.lastError,
+        attemptCount: args.attemptCount,
+      })
+    }
     return null
   },
 })

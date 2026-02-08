@@ -45,12 +45,12 @@
 - Error sanitization via `sanitizeErrorMessage` before writing to client-visible `matchResults.error` field
 - `@ai-sdk/openai` provider with `gpt-4o-mini` for cost-efficient rationale generation
 
-## Chained Action Pattern (`triage.ts` + `triageActions.ts`)
-- `triageActions.ts` has `"use node"` for Node.js runtime (required by `unpdf`, `ai`, `@ai-sdk/anthropic`)
-- `triage.ts` has mutations/queries in default runtime; schedules actions via `internal.triageActions.runScope`
-- Chained internalActions: each action writes results via `internal.triage.*` internalMutations, then schedules the next action via `ctx.scheduler.runAfter(0, internal.triageActions.*, ...)`
+## Single PDF Triage Action (`triage.ts` + `triageActions.ts`)
+- `triageActions.ts` has `"use node"` for Node.js runtime (required by `ai`, `@ai-sdk/anthropic`)
+- Single `runTriage` internalAction sends the PDF directly to Haiku via `generateObject` with `type: 'file'` — one call returns all 4 dimensions (scope, formatting, citations, claims)
+- `triage.ts` has mutations/queries in default runtime; schedules action via `internal.triageActions.runTriage`
+- Batch mutations: `markAllRunning`, `writeAllResults` (writes all 4 reports + transitions to TRIAGE_COMPLETE), `markAllFailed`
 - Retry: track `attemptCount` via action args (not DB), re-schedule self with exponential backoff (max 3 attempts)
-- Idempotency: use `idempotencyKey` index to prevent duplicate writes; `writeResult` no-ops if already `complete`
-- Terminal state guards: `markRunning` won't overwrite `complete`/`failed`; `markFailed` won't overwrite `complete`
-- Pipeline continues on failure: failed passes schedule the next pass with empty text so remaining passes still execute
+- Idempotency: use `idempotencyKey` index to prevent duplicate writes; batch mutations no-op on terminal states
+- Terminal state guards: `markAllRunning` won't overwrite `complete`/`failed`; `markAllFailed` won't overwrite `complete`
 - Object-level auth on queries: `assertTriageAccess` checks author ownership or privileged role
