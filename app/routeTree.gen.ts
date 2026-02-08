@@ -9,38 +9,186 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SubmitRouteRouteImport } from './routes/submit/route'
+import { Route as ReviewRouteRouteImport } from './routes/review/route'
+import { Route as EditorRouteRouteImport } from './routes/editor/route'
+import { Route as ArticleRouteRouteImport } from './routes/article/route'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SubmitIndexRouteImport } from './routes/submit/index'
+import { Route as ReviewIndexRouteImport } from './routes/review/index'
+import { Route as EditorIndexRouteImport } from './routes/editor/index'
+import { Route as ArticleIndexRouteImport } from './routes/article/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 
+const SubmitRouteRoute = SubmitRouteRouteImport.update({
+  id: '/submit',
+  path: '/submit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewRouteRoute = ReviewRouteRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditorRouteRoute = EditorRouteRouteImport.update({
+  id: '/editor',
+  path: '/editor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArticleRouteRoute = ArticleRouteRouteImport.update({
+  id: '/article',
+  path: '/article',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubmitIndexRoute = SubmitIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SubmitRouteRoute,
+} as any)
+const ReviewIndexRoute = ReviewIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ReviewRouteRoute,
+} as any)
+const EditorIndexRoute = EditorIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EditorRouteRoute,
+} as any)
+const ArticleIndexRoute = ArticleIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ArticleRouteRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/article': typeof ArticleRouteRouteWithChildren
+  '/editor': typeof EditorRouteRouteWithChildren
+  '/review': typeof ReviewRouteRouteWithChildren
+  '/submit': typeof SubmitRouteRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
+  '/article/': typeof ArticleIndexRoute
+  '/editor/': typeof EditorIndexRoute
+  '/review/': typeof ReviewIndexRoute
+  '/submit/': typeof SubmitIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminIndexRoute
+  '/article': typeof ArticleIndexRoute
+  '/editor': typeof EditorIndexRoute
+  '/review': typeof ReviewIndexRoute
+  '/submit': typeof SubmitIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/article': typeof ArticleRouteRouteWithChildren
+  '/editor': typeof EditorRouteRouteWithChildren
+  '/review': typeof ReviewRouteRouteWithChildren
+  '/submit': typeof SubmitRouteRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
+  '/article/': typeof ArticleIndexRoute
+  '/editor/': typeof EditorIndexRoute
+  '/review/': typeof ReviewIndexRoute
+  '/submit/': typeof SubmitIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/article'
+    | '/editor'
+    | '/review'
+    | '/submit'
+    | '/admin/'
+    | '/article/'
+    | '/editor/'
+    | '/review/'
+    | '/submit/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/admin' | '/article' | '/editor' | '/review' | '/submit'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/article'
+    | '/editor'
+    | '/review'
+    | '/submit'
+    | '/admin/'
+    | '/article/'
+    | '/editor/'
+    | '/review/'
+    | '/submit/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  ArticleRouteRoute: typeof ArticleRouteRouteWithChildren
+  EditorRouteRoute: typeof EditorRouteRouteWithChildren
+  ReviewRouteRoute: typeof ReviewRouteRouteWithChildren
+  SubmitRouteRoute: typeof SubmitRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/submit': {
+      id: '/submit'
+      path: '/submit'
+      fullPath: '/submit'
+      preLoaderRoute: typeof SubmitRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/review': {
+      id: '/review'
+      path: '/review'
+      fullPath: '/review'
+      preLoaderRoute: typeof ReviewRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editor': {
+      id: '/editor'
+      path: '/editor'
+      fullPath: '/editor'
+      preLoaderRoute: typeof EditorRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/article': {
+      id: '/article'
+      path: '/article'
+      fullPath: '/article'
+      preLoaderRoute: typeof ArticleRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +196,111 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/submit/': {
+      id: '/submit/'
+      path: '/'
+      fullPath: '/submit/'
+      preLoaderRoute: typeof SubmitIndexRouteImport
+      parentRoute: typeof SubmitRouteRoute
+    }
+    '/review/': {
+      id: '/review/'
+      path: '/'
+      fullPath: '/review/'
+      preLoaderRoute: typeof ReviewIndexRouteImport
+      parentRoute: typeof ReviewRouteRoute
+    }
+    '/editor/': {
+      id: '/editor/'
+      path: '/'
+      fullPath: '/editor/'
+      preLoaderRoute: typeof EditorIndexRouteImport
+      parentRoute: typeof EditorRouteRoute
+    }
+    '/article/': {
+      id: '/article/'
+      path: '/'
+      fullPath: '/article/'
+      preLoaderRoute: typeof ArticleIndexRouteImport
+      parentRoute: typeof ArticleRouteRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
   }
 }
 
+interface AdminRouteRouteChildren {
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
+
+interface ArticleRouteRouteChildren {
+  ArticleIndexRoute: typeof ArticleIndexRoute
+}
+
+const ArticleRouteRouteChildren: ArticleRouteRouteChildren = {
+  ArticleIndexRoute: ArticleIndexRoute,
+}
+
+const ArticleRouteRouteWithChildren = ArticleRouteRoute._addFileChildren(
+  ArticleRouteRouteChildren,
+)
+
+interface EditorRouteRouteChildren {
+  EditorIndexRoute: typeof EditorIndexRoute
+}
+
+const EditorRouteRouteChildren: EditorRouteRouteChildren = {
+  EditorIndexRoute: EditorIndexRoute,
+}
+
+const EditorRouteRouteWithChildren = EditorRouteRoute._addFileChildren(
+  EditorRouteRouteChildren,
+)
+
+interface ReviewRouteRouteChildren {
+  ReviewIndexRoute: typeof ReviewIndexRoute
+}
+
+const ReviewRouteRouteChildren: ReviewRouteRouteChildren = {
+  ReviewIndexRoute: ReviewIndexRoute,
+}
+
+const ReviewRouteRouteWithChildren = ReviewRouteRoute._addFileChildren(
+  ReviewRouteRouteChildren,
+)
+
+interface SubmitRouteRouteChildren {
+  SubmitIndexRoute: typeof SubmitIndexRoute
+}
+
+const SubmitRouteRouteChildren: SubmitRouteRouteChildren = {
+  SubmitIndexRoute: SubmitIndexRoute,
+}
+
+const SubmitRouteRouteWithChildren = SubmitRouteRoute._addFileChildren(
+  SubmitRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
+  ArticleRouteRoute: ArticleRouteRouteWithChildren,
+  EditorRouteRoute: EditorRouteRouteWithChildren,
+  ReviewRouteRoute: ReviewRouteRouteWithChildren,
+  SubmitRouteRoute: SubmitRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

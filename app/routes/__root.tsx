@@ -18,6 +18,7 @@ import * as React from 'react'
 import { auth } from '@clerk/tanstack-react-start/server'
 import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import { useMutation } from 'convex/react'
+import { SearchIcon } from 'lucide-react'
 
 import { api } from '../../convex/_generated/api'
 
@@ -25,6 +26,9 @@ import type { ConvexQueryClient } from '@convex-dev/react-query'
 import type { ConvexReactClient } from 'convex/react'
 import type { QueryClient } from '@tanstack/react-query'
 import { RoleBadge, RoleSwitcher, useCurrentUser } from '~/features/auth'
+import { Button } from '~/components/ui/button'
+import { Kbd } from '~/components/ui/kbd'
+import { CommandPalette } from '~/components/command-palette'
 import appCss from '~/styles/globals.css?url'
 
 const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
@@ -177,8 +181,33 @@ function AuthenticatedHeader() {
           {showRoleSwitcher && <RoleSwitcher currentRole={user.role} />}
         </>
       )}
+      <CommandPaletteTrigger />
+      <CommandPalette isBootstrapped={isBootstrapped} />
       <UserButton />
     </>
+  )
+}
+
+function CommandPaletteTrigger() {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="hidden gap-2 text-muted-foreground md:inline-flex"
+      onClick={() => {
+        document.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'k',
+            metaKey: true,
+            bubbles: true,
+          }),
+        )
+      }}
+    >
+      <SearchIcon className="size-3.5" />
+      <span className="text-xs">Search...</span>
+      <Kbd>⌘K</Kbd>
+    </Button>
   )
 }
 
