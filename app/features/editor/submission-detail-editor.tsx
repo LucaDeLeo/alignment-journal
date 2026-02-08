@@ -14,6 +14,7 @@ import { api } from '../../../convex/_generated/api'
 import { formatDate } from '../submissions/status-utils'
 import { StatusTimeline } from '../submissions/status-timeline'
 import { TriageDisplay } from '../submissions/triage-display'
+import { NotificationPreviewList } from '../notifications'
 import { ActionEditorSelector } from './action-editor-selector'
 import { AuditTimeline } from './audit-timeline'
 import { DecisionPanel } from './decision-panel'
@@ -231,6 +232,9 @@ export function EditorSubmissionDetail({
         </h2>
         <StatusTimeline currentStatus={submission.status} />
       </section>
+
+      {/* Notification Previews */}
+      <NotificationPreviewList submissionId={submissionId} />
 
       {/* Audit Trail */}
       <AuditTimeline submissionId={submissionId} />

@@ -19,6 +19,7 @@ import type * as helpers_transitions from "../helpers/transitions.js";
 import type * as invitations from "../invitations.js";
 import type * as matching from "../matching.js";
 import type * as matchingActions from "../matchingActions.js";
+import type * as notifications from "../notifications.js";
 import type * as payments from "../payments.js";
 import type * as pdfExtraction from "../pdfExtraction.js";
 import type * as pdfExtractionActions from "../pdfExtractionActions.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   invitations: typeof invitations;
   matching: typeof matching;
   matchingActions: typeof matchingActions;
+  notifications: typeof notifications;
   payments: typeof payments;
   pdfExtraction: typeof pdfExtraction;
   pdfExtractionActions: typeof pdfExtractionActions;

@@ -86,7 +86,7 @@ development_status:
   epic-6: backlog
   6-1-reviewer-payment-calculation-and-display:done
   6-2-editor-payment-summary-view:done
-  6-3-in-app-notification-previews: backlog
+  6-3-in-app-notification-previews:done
   epic-6-retrospective: optional
 
   # Epic 7: Seed Data & Demo Experience
