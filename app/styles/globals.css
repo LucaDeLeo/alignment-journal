@@ -179,3 +179,15 @@
     animation: none;
   }
 }
+
+/* Discussion message highlight fadeout */
+@keyframes fadeHighlight {
+  0% { background-color: oklch(var(--accent) / 0.1); }
+  100% { background-color: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[fadeHighlight_3s_ease-out_forwards\] {
+    animation: none;
+  }
+}

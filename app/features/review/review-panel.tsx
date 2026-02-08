@@ -1,5 +1,6 @@
 import { BookOpenIcon, InfoIcon, MessageSquareIcon } from 'lucide-react'
 
+import { DiscussionThread } from './discussion-thread'
 import { ReviewForm } from './review-form'
 
 import type { Id } from 'convex/_generated/dataModel'
@@ -24,6 +25,7 @@ export function ReviewPanel({
   revision,
   status,
   submittedAt,
+  reviewStatus,
 }: {
   reviewId: Id<'reviews'>
   submissionId: Id<'submissions'>
@@ -31,6 +33,7 @@ export function ReviewPanel({
   revision: number
   status: string
   submittedAt?: number
+  reviewStatus?: string
 }) {
   return (
     <ScrollArea className="h-full">
@@ -63,12 +66,10 @@ export function ReviewPanel({
           </TabsContent>
 
           <TabsContent value="discussion" className="mt-4">
-            <div className="flex flex-col items-center gap-2 rounded-lg border bg-background p-6 text-center">
-              <MessageSquareIcon className="size-6 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm text-muted-foreground">
-                Discussion will be available after you submit your review
-              </p>
-            </div>
+            <DiscussionThread
+              submissionId={submissionId}
+              reviewStatus={reviewStatus}
+            />
           </TabsContent>
 
           <TabsContent value="guidelines" className="mt-4">

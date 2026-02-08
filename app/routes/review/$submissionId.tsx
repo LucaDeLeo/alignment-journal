@@ -37,7 +37,7 @@ function ReviewWorkspacePage() {
     submissionId: submissionId as Id<'submissions'>,
   })
   const startReview = useMutation(api.reviews.startReview)
-  const extractPdfText = useAction(api.pdfExtraction.extractPdfText)
+  const extractPdfText = useAction(api.pdfExtractionActions.extractPdfText)
   const isNarrow = useIsNarrow()
 
   const [isExtracting, setIsExtracting] = React.useState(false)
@@ -106,6 +106,7 @@ function ReviewWorkspacePage() {
       revision={review.revision}
       status={review.status}
       submittedAt={review.submittedAt}
+      reviewStatus={review.status}
     />
   )
 

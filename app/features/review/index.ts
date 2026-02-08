@@ -1,4 +1,7 @@
 export { ConfidentialityBadge } from './confidentiality-badge'
+export { DiscussionComposer } from './discussion-composer'
+export { DiscussionMessage } from './discussion-message'
+export { DiscussionThread } from './discussion-thread'
 export { PaperPanel } from './paper-panel'
 export { PreSubmitSummary } from './pre-submit-summary'
 export { ProgressRing } from './progress-ring'

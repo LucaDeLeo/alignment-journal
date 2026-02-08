@@ -10,6 +10,7 @@
 
 import type * as audit from "../audit.js";
 import type * as decisions from "../decisions.js";
+import type * as discussions from "../discussions.js";
 import type * as invitations from "../invitations.js";
 import type * as matching from "../matching.js";
 import type * as pdfExtraction from "../pdfExtraction.js";
@@ -32,6 +33,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   audit: typeof audit;
   decisions: typeof decisions;
+  discussions: typeof discussions;
   invitations: typeof invitations;
   matching: typeof matching;
   pdfExtraction: typeof pdfExtraction;
