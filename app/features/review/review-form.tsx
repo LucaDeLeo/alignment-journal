@@ -1,5 +1,5 @@
 import { ConvexError } from 'convex/values'
-import { ClockIcon, LockIcon, SendIcon } from 'lucide-react'
+import { LockIcon, SendIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { useMutation } from 'convex/react'
@@ -115,6 +115,9 @@ export function ReviewForm({
   const [saveStates, setSaveStates] = React.useState<
     Record<string, SaveState>
   >({})
+  const [saveTimestamps, setSaveTimestamps] = React.useState<
+    Record<string, number>
+  >({})
   const [conflict, setConflict] = React.useState<ConflictInfo | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -125,11 +128,16 @@ export function ReviewForm({
   >({})
   // Track sections with in-flight save requests to prevent sync overwrites
   const pendingSavesRef = React.useRef<Partial<Record<string, boolean>>>({})
+  // Mutex to serialize saves and prevent concurrent VERSION_CONFLICT errors
+  const saveMutexRef = React.useRef<Promise<void>>(Promise.resolve())
 
   const editCountdown = useEditCountdown(submittedAt)
   const isLocked = status === 'locked'
   const isSubmitted = status === 'submitted'
-  const isEditable = !isLocked && (status === 'in_progress' || isSubmitted)
+  const isEditable =
+    !isLocked &&
+    (status === 'in_progress' ||
+      (isSubmitted && editCountdown !== null && editCountdown > 0))
 
   // Sync server sections into local state when server data changes
   // (only for sections not currently being edited)
@@ -195,37 +203,54 @@ export function ReviewForm({
   const submitReviewMutation = useMutation(api.reviews.submitReview)
 
   const saveSection = React.useCallback(
-    async (section: string, content: string) => {
-      setSaveStates((prev) => ({ ...prev, [section]: 'saving' }))
-      pendingSavesRef.current[section] = true
-      try {
-        const result = await updateSectionMutation({
-          submissionId,
-          section: section as
-            | 'summary'
-            | 'strengths'
-            | 'weaknesses'
-            | 'questions'
-            | 'recommendation',
-          content,
-          expectedRevision: localRevisionRef.current,
-        })
-        localRevisionRef.current = result.revision
-        setSaveStates((prev) => ({ ...prev, [section]: 'saved' }))
-        setConflict(null)
-      } catch (err) {
-        if (
-          err instanceof ConvexError &&
-          (err.data as { code?: string }).code === 'VERSION_CONFLICT'
-        ) {
-          setConflict({ section })
-          setSaveStates((prev) => ({ ...prev, [section]: 'error' }))
-        } else {
-          setSaveStates((prev) => ({ ...prev, [section]: 'error' }))
+    (section: string, content: string) => {
+      const prevMutex = saveMutexRef.current
+      let resolveMutex: () => void
+      saveMutexRef.current = new Promise<void>((r) => {
+        resolveMutex = r
+      })
+
+      const run = async () => {
+        await prevMutex
+        setSaveStates((prev) => ({ ...prev, [section]: 'saving' }))
+        pendingSavesRef.current[section] = true
+        try {
+          const result = await updateSectionMutation({
+            submissionId,
+            section: section as
+              | 'summary'
+              | 'strengths'
+              | 'weaknesses'
+              | 'questions'
+              | 'recommendation',
+            content,
+            expectedRevision: localRevisionRef.current,
+          })
+          localRevisionRef.current = result.revision
+          const now = Date.now()
+          setSaveStates((prev) => ({ ...prev, [section]: 'saved' }))
+          setSaveTimestamps((prev) => ({ ...prev, [section]: now }))
+          setConflict(null)
+        } catch (err) {
+          const now = Date.now()
+          if (
+            err instanceof ConvexError &&
+            (err.data as { code?: string }).code === 'VERSION_CONFLICT'
+          ) {
+            setConflict({ section })
+            setSaveStates((prev) => ({ ...prev, [section]: 'error' }))
+            setSaveTimestamps((prev) => ({ ...prev, [section]: now }))
+          } else {
+            setSaveStates((prev) => ({ ...prev, [section]: 'error' }))
+            setSaveTimestamps((prev) => ({ ...prev, [section]: now }))
+          }
+        } finally {
+          delete pendingSavesRef.current[section]
+          resolveMutex!()
         }
-      } finally {
-        delete pendingSavesRef.current[section]
       }
+
+      void run()
     },
     [submissionId, updateSectionMutation],
   )
@@ -282,14 +307,27 @@ export function ReviewForm({
     }
   }
 
-  // Compute global save state for the indicator
+  // Compute global save state from the most recent save operation
   const globalSaveState: SaveState = React.useMemo(() => {
-    const states = Object.values(saveStates)
-    if (states.includes('saving')) return 'saving'
-    if (states.includes('error')) return 'error'
-    if (states.includes('saved')) return 'saved'
-    return 'idle'
-  }, [saveStates])
+    const entries = Object.entries(saveStates)
+    if (entries.length === 0) return 'idle'
+
+    // If anything is currently saving, show saving
+    if (entries.some(([, s]) => s === 'saving')) return 'saving'
+
+    // Otherwise, show the state of the most recently completed operation
+    let latestSection = ''
+    let latestTime = 0
+    for (const [section] of entries) {
+      const ts = saveTimestamps[section] ?? 0
+      if (ts > latestTime) {
+        latestTime = ts
+        latestSection = section
+      }
+    }
+
+    return latestSection ? (saveStates[latestSection] ?? 'idle') : 'idle'
+  }, [saveStates, saveTimestamps])
 
   // Compute completed sections for progress ring
   const completedCount = SECTION_DEFS.filter((def) => {
@@ -333,23 +371,6 @@ export function ReviewForm({
     )
   }
 
-  // Submitted with success confirmation
-  if (submitSuccess && !isSubmitted) {
-    return (
-      <div className="flex flex-col items-center gap-3 p-6 text-center transition-transform duration-200">
-        <div className="rounded-lg border bg-background p-6">
-          <p className="text-lg font-medium">Review submitted successfully</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Payment estimate will be available in a future update.
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            You can edit your review for the next 15 minutes.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
@@ -362,12 +383,14 @@ export function ReviewForm({
         </span>
       </div>
 
-      {isSubmitted && editCountdown !== null && editCountdown > 0 && (
-        <div className="flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 p-3 text-sm dark:border-blue-700 dark:bg-blue-950">
-          <ClockIcon className="size-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-blue-800 dark:text-blue-200">
-            Review submitted. You can make edits for the next{' '}
-            {formatCountdown(editCountdown)}
+      {(submitSuccess || isSubmitted) && (
+        <div className="flex items-center gap-2 rounded-md border border-green-300 bg-green-50 p-3 text-sm dark:border-green-700 dark:bg-green-950">
+          <SendIcon className="size-4 text-green-600 dark:text-green-400" />
+          <span className="text-green-800 dark:text-green-200">
+            Review submitted successfully.{' '}
+            {editCountdown !== null && editCountdown > 0
+              ? `You can make edits for the next ${formatCountdown(editCountdown)}.`
+              : 'The edit window has closed.'}
           </span>
         </div>
       )}

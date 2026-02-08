@@ -238,10 +238,19 @@ export const updateSection = mutation({
         throw notFoundError('Review')
       }
 
-      if (review.status !== 'in_progress' && review.status !== 'submitted') {
+      if (review.status === 'locked' || review.status === 'assigned') {
         throw validationError(
           'Review sections can only be edited when in progress or within the edit window',
         )
+      }
+
+      if (review.status === 'submitted') {
+        const editDeadline = (review.submittedAt ?? 0) + 15 * 60 * 1000
+        if (Date.now() > editDeadline) {
+          throw validationError(
+            'The 15-minute edit window has expired',
+          )
+        }
       }
 
       if (review.revision !== args.expectedRevision) {
