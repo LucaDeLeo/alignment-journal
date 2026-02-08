@@ -19,7 +19,8 @@ const SENTINEL_CLERK_ID = 'seed_eic'
 // Seed data definitions
 // ---------------------------------------------------------------------------
 
-function buildSeedUsers(baseTime: number) {
+/** @internal Exported for testing. */
+export function buildSeedUsers(baseTime: number) {
   return [
     {
       clerkId: 'seed_author_1',
@@ -83,6 +84,22 @@ function buildSeedUsers(baseTime: number) {
       name: 'Admin User',
       affiliation: 'Alignment Journal',
       role: 'admin' as const,
+      createdAt: baseTime,
+    },
+    {
+      clerkId: 'seed_reviewer_4',
+      email: 'seed-reviewer-4@alignment-journal.org',
+      name: 'Dr. Amara Okafor',
+      affiliation: 'Oxford FHI',
+      role: 'reviewer' as const,
+      createdAt: baseTime,
+    },
+    {
+      clerkId: 'seed_reviewer_5',
+      email: 'seed-reviewer-5@alignment-journal.org',
+      name: 'Dr. Liang Zhao',
+      affiliation: 'UC Berkeley CHAI',
+      role: 'reviewer' as const,
       createdAt: baseTime,
     },
   ]
@@ -411,7 +428,8 @@ function buildTriageReports(
   ]
 }
 
-function buildReviewerProfiles(
+/** @internal Exported for testing. */
+export function buildReviewerProfiles(
   baseTime: number,
   reviewerUserIds: Array<Id<'users'>>,
 ) {
@@ -504,6 +522,70 @@ function buildReviewerProfiles(
           title: 'Attention Head Taxonomy in Safety-Trained Models',
           venue: 'AAAI',
           year: 2023,
+        },
+      ],
+      createdAt: profileTime,
+      updatedAt: profileTime,
+    },
+    {
+      userId: reviewerUserIds[3],
+      researchAreas: [
+        'value alignment',
+        'moral uncertainty',
+        'preference learning',
+        'cooperative AI',
+        'game theory',
+      ],
+      publications: [
+        {
+          title:
+            'Formalizing Moral Uncertainty in Multi-Agent Alignment',
+          venue: 'AAAI',
+          year: 2024,
+        },
+        {
+          title:
+            'Cooperative Inverse Reinforcement Learning Under Partial Observability',
+          venue: 'NeurIPS',
+          year: 2023,
+        },
+        {
+          title:
+            'Game-Theoretic Approaches to Value Lock-In Prevention',
+          venue: 'Journal of AI Research',
+          year: 2022,
+        },
+      ],
+      createdAt: profileTime,
+      updatedAt: profileTime,
+    },
+    {
+      userId: reviewerUserIds[4],
+      researchAreas: [
+        'mesa-optimization',
+        'inner alignment',
+        'deceptive alignment',
+        'goal misgeneralization',
+        'distributional robustness',
+      ],
+      publications: [
+        {
+          title:
+            'Detecting Deceptive Alignment in Mesa-Optimizers via Behavioral Probing',
+          venue: 'ICML',
+          year: 2024,
+        },
+        {
+          title:
+            'Goal Misgeneralization in Deep Reinforcement Learning: A Causal Analysis',
+          venue: 'NeurIPS',
+          year: 2023,
+        },
+        {
+          title:
+            'Distributional Robustness and Inner Alignment: Theoretical Connections',
+          venue: 'ICLR',
+          year: 2022,
         },
       ],
       createdAt: profileTime,
@@ -1463,6 +1545,21 @@ export const seedReviewerProfiles = internalMutation({
   },
 })
 
+export const seedEmbeddings = internalMutation({
+  args: { profileIds: v.array(v.id('reviewerProfiles')) },
+  returns: v.null(),
+  handler: async (ctx, { profileIds }) => {
+    for (const profileId of profileIds) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.matchingActions.generateEmbedding,
+        { profileId },
+      )
+    }
+    return null
+  },
+})
+
 export const seedReviews = internalMutation({
   args: {
     records: v.array(
@@ -1744,6 +1841,8 @@ export const seedData = action({
       ae: userIds[5],
       eic: userIds[6],
       admin: userIds[7],
+      reviewer4: userIds[8],
+      reviewer5: userIds[9],
     }
 
     // 2. Submissions
@@ -1769,11 +1868,16 @@ export const seedData = action({
       uids.reviewer1,
       uids.reviewer2,
       uids.reviewer3,
+      uids.reviewer4,
+      uids.reviewer5,
     ])
     const profileIds: Array<Id<'reviewerProfiles'>> = await ctx.runMutation(
       internal.seed.seedReviewerProfiles,
       { records: profilesData },
     )
+
+    // 4a. Schedule embedding generation for all profiles
+    await ctx.runMutation(internal.seed.seedEmbeddings, { profileIds })
 
     // 5. Reviews
     const reviewsData = buildReviews(baseTime, {
