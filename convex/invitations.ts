@@ -136,15 +136,16 @@ export const sendInvitations = mutation({
       const now = Date.now()
       const inviteIds: Array<Id<'reviewInvites'>> = []
 
+      // Fetch existing invites once for duplicate checking
+      const existingInvites = await ctx.db
+        .query('reviewInvites')
+        .withIndex('by_submissionId', (q) =>
+          q.eq('submissionId', args.submissionId),
+        )
+        .collect()
+
       for (const reviewerId of args.reviewerIds) {
         // Check for existing non-revoked invite for this reviewer+submission
-        const existingInvites = await ctx.db
-          .query('reviewInvites')
-          .withIndex('by_submissionId', (q) =>
-            q.eq('submissionId', args.submissionId),
-          )
-          .collect()
-
         const hasActiveInvite = existingInvites.some(
           (inv) =>
             inv.reviewerId === reviewerId && inv.revokedAt === undefined,
