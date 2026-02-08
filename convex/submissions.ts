@@ -5,7 +5,10 @@ import { mutation, query } from './_generated/server'
 import { internal } from './_generated/api'
 import { withAuthor, withUser } from './helpers/auth'
 import { notFoundError, unauthorizedError } from './helpers/errors'
-import { submissionStatusValidator } from './helpers/transitions'
+import {
+  assertTransition,
+  submissionStatusValidator,
+} from './helpers/transitions'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -335,6 +338,126 @@ export const listForEditor = query({
         ...results,
         page: enrichedPage,
       }
+    },
+  ),
+})
+
+/**
+ * Fetches a single submission by ID for editor roles.
+ * No author ownership check — editors can view any submission.
+ * Includes a generated PDF serving URL.
+ */
+export const getByIdForEditor = query({
+  args: {
+    submissionId: v.id('submissions'),
+  },
+  returns: v.object({
+    _id: v.id('submissions'),
+    _creationTime: v.number(),
+    title: v.string(),
+    authors: v.array(v.object({ name: v.string(), affiliation: v.string() })),
+    abstract: v.string(),
+    keywords: v.array(v.string()),
+    status: submissionStatusValidator,
+    pdfStorageId: v.optional(v.id('_storage')),
+    pdfFileName: v.optional(v.string()),
+    pdfFileSize: v.optional(v.number()),
+    pdfUrl: v.union(v.null(), v.string()),
+    actionEditorId: v.optional(v.id('users')),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+  handler: withUser(
+    async (
+      ctx: QueryCtx & { user: Doc<'users'> },
+      args: { submissionId: Id<'submissions'> },
+    ) => {
+      if (
+        !EDITOR_ROLES.includes(
+          ctx.user.role as (typeof EDITOR_ROLES)[number],
+        )
+      ) {
+        throw unauthorizedError(
+          'Requires editor, action editor, or admin role',
+        )
+      }
+
+      const submission = await ctx.db.get('submissions', args.submissionId)
+      if (!submission) {
+        throw notFoundError('Submission', args.submissionId)
+      }
+
+      const pdfUrl = submission.pdfStorageId
+        ? await ctx.storage.getUrl(submission.pdfStorageId)
+        : null
+
+      return {
+        _id: submission._id,
+        _creationTime: submission._creationTime,
+        title: submission.title,
+        authors: submission.authors,
+        abstract: submission.abstract,
+        keywords: submission.keywords,
+        status: submission.status,
+        pdfStorageId: submission.pdfStorageId,
+        pdfFileName: submission.pdfFileName,
+        pdfFileSize: submission.pdfFileSize,
+        pdfUrl,
+        actionEditorId: submission.actionEditorId,
+        createdAt: submission.createdAt,
+        updatedAt: submission.updatedAt,
+      }
+    },
+  ),
+})
+
+/**
+ * Transitions a submission to a new status.
+ * Validates editor role and state machine transition.
+ * Logs the transition to auditLogs.
+ */
+export const transitionStatus = mutation({
+  args: {
+    submissionId: v.id('submissions'),
+    newStatus: submissionStatusValidator,
+  },
+  returns: v.null(),
+  handler: withUser(
+    async (
+      ctx: MutationCtx & { user: Doc<'users'> },
+      args: { submissionId: Id<'submissions'>; newStatus: SubmissionStatus },
+    ) => {
+      if (
+        !EDITOR_ROLES.includes(
+          ctx.user.role as (typeof EDITOR_ROLES)[number],
+        )
+      ) {
+        throw unauthorizedError(
+          'Requires editor, action editor, or admin role',
+        )
+      }
+
+      const submission = await ctx.db.get('submissions', args.submissionId)
+      if (!submission) {
+        throw notFoundError('Submission', args.submissionId)
+      }
+
+      assertTransition(submission.status, args.newStatus)
+
+      await ctx.db.patch('submissions', submission._id, {
+        status: args.newStatus,
+        updatedAt: Date.now(),
+      })
+
+      await ctx.scheduler.runAfter(0, internal.audit.logAction, {
+        submissionId: args.submissionId,
+        actorId: ctx.user._id,
+        actorRole: ctx.user.role,
+        action: 'status_transition',
+        details: `${submission.status} → ${args.newStatus}`,
+      })
+
+      return null
     },
   ),
 })

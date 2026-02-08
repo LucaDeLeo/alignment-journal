@@ -6,7 +6,9 @@ export {
   STATUS_LABELS,
   SUBMISSION_STATUSES,
 } from './editor-constants'
+export { EditorSubmissionDetail } from './submission-detail-editor'
 export { PipelineFilters } from './pipeline-filters'
 export { PipelineTable } from './pipeline-table'
+export { StatusTransitionChip } from './status-transition-chip'
 
 export type { SubmissionStatus } from './editor-constants'
