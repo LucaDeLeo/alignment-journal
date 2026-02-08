@@ -46,10 +46,8 @@ export function StatusTimeline({ currentStatus }: StatusTimelineProps) {
                 <Icon className="size-[22px] text-muted-foreground/60" />
               ) : step.state === 'current' ? (
                 <Icon
-                  className={cn(
-                    'size-[22px]',
-                    `text-[var(${STATUS_COLOR_VAR[step.status]})]`,
-                  )}
+                  className="size-[22px]"
+                  style={{ color: `var(${STATUS_COLOR_VAR[step.status]})` }}
                 />
               ) : (
                 <Icon className="size-[22px] text-muted-foreground/30" />
