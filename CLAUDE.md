@@ -24,8 +24,8 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Each feature folder has an `index.ts` barrel export for clean imports from route files
 - Naming: `feature-verb.tsx` (e.g., `submission-form.tsx`, `triage-report-card.tsx`)
 - Shared utilities within a feature: `{domain}-constants.ts`, `status-utils.ts`
-- Established folders: `app/features/submissions/` (11 files), `app/features/auth/`, `app/features/editor/` (14 files), `app/features/review/` (13 files), `app/features/admin/` (3 files)
-- Future epics should follow: `app/features/article/`, etc.
+- Established folders: `app/features/submissions/` (12 files), `app/features/auth/`, `app/features/editor/` (14 files), `app/features/review/` (14 files), `app/features/admin/` (3 files), `app/features/article/` (3 files)
+- Future epics should follow this pattern for new domains
 - Cross-feature reuse: import from sibling feature barrel exports (e.g., `~/features/submissions` in editor components)
 
 ### Config Files
@@ -78,7 +78,8 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 
 ### Auth Wrappers (Convex RBAC)
 - `convex/helpers/auth.ts` - HOF wrappers: `withUser`, `withRole`, `withAuthor`, `withEditor`, `withAdmin`, `withReviewer`, `withActionEditor`
-- All Convex mutations/queries use a wrapper except `ensureUser` (bootstraps the user record on first auth, cannot require an existing user) and `getInviteStatus` (public query, no auth — allows checking invite status before sign-in)
+<!-- Updated from Epic 5 retrospective -->
+- All Convex mutations/queries use a wrapper except `ensureUser` (bootstraps the user record on first auth, cannot require an existing user), `getInviteStatus` (public query, no auth — allows checking invite status before sign-in), and `articles.getPublishedArticle` / `articles.listPublished` (Diamond Open Access public queries — status filter enforces security boundary)
 - `me` query uses the Convex "skip" pattern: gated on `isBootstrapped` state so it does not fire before `ensureUser` completes
 - `switchRole` mutation has a server-side guard checking `DEMO_ROLE_SWITCHER` env var -- disabled in production to prevent role self-escalation
 - Editor role gating: most editor functions use `withUser` + manual `EDITOR_ROLES.includes(ctx.user.role)` check (from `convex/helpers/roles.ts`) because the `withEditor` wrapper is too restrictive (only allows `editor_in_chief`)
@@ -87,7 +88,7 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 <!-- Added from Epic 3 retrospective -->
 - `convex/audit.ts` - `logAction` internalMutation (append-only, only write path to `auditLogs` table)
 - Deferred write pattern: `ctx.scheduler.runAfter(0, internal.audit.logAction, { submissionId, actorId, actorRole, action, details })`
-- Used by: `transitionStatus`, `assignActionEditor`, `sendInvitations`, `revokeInvitation`, `acceptInvitation`, `makeDecision`, `undoDecision`
+- Used by: `transitionStatus`, `assignActionEditor`, `sendInvitations`, `revokeInvitation`, `acceptInvitation`, `makeDecision`, `undoDecision`, `createDraft`, `submitAbstract`, `approveAbstract`, `authorAcceptAbstract`
 - `AuditTimeline` component in `app/features/editor/audit-timeline.tsx` subscribes reactively via `usePaginatedQuery`
 - Action labels mapped in `audit-timeline.tsx` -- when adding new action types, update the `ACTION_LABELS` mapping in the same story
 
@@ -95,7 +96,8 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Server: `expectedRevision` arg, compare against `review.revision`, throw `versionConflictError()`, increment on success
 - Client: `localRevisionRef` + `saveMutexRef` for serialized saves + `withOptimisticUpdate` for instant cache
 - Conflict UI: preserve local draft, show "Reload server version" / "Keep my version" buttons
-- Used by: `convex/reviews.ts` `updateSection` + `app/features/review/review-form.tsx`
+<!-- Updated from Epic 5 retrospective -->
+- Used by: `convex/reviews.ts` `updateSection` + `app/features/review/review-form.tsx`, `convex/reviewerAbstracts.ts` `updateContent` + `app/features/review/abstract-draft-form.tsx`
 
 ### Semi-Confidential Identity Gating
 - Server-side only: `convex/discussions.ts` `listBySubmission` computes display names based on viewer role + submission status

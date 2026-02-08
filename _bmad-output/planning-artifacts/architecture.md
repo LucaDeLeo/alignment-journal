@@ -737,7 +737,8 @@ alignment-journal/
 **API Boundaries:**
 - **Client → Convex:** All data access through Convex query/mutation/action functions via type-safe `api` import. No REST endpoints, no direct database access from client.
 - **Convex → External Services:** LLM calls (Claude Sonnet 4.5) and embedding calls (OpenAI) happen exclusively in Convex Actions. Actions write results back via internal mutations — never return large payloads to client.
-- **Auth Boundary:** Clerk JWT validated in every Convex function via `convex/helpers/auth.ts` wrappers. No unauthenticated Convex functions except published article queries. Role checked before any data access. Demo role switching is client-only UX and cannot elevate permissions server-side.
+<!-- Updated from Epic 5 retrospective -->
+- **Auth Boundary:** Clerk JWT validated in every Convex function via `convex/helpers/auth.ts` wrappers. Unauthenticated Convex functions: `articles.getPublishedArticle`, `articles.listPublished` (Diamond Open Access, security via PUBLISHED status filter), and `invitations.getInviteStatus` (pre-auth invite check). Role checked before any data access. Demo role switching is client-only UX and cannot elevate permissions server-side.
 - **File Storage Boundary:** PDFs uploaded via Convex file storage API. Serving URLs generated server-side in queries after access check — no direct storage URLs exposed to unauthorized users.
 
 **Component Boundaries:**
@@ -764,8 +765,9 @@ alignment-journal/
 | Reviewer Matching | FR16-19 | `matching.ts`, `users.ts` | `matching/` | `editor/submissions.$id.tsx` |
 | Editor Dashboard & Workflow | FR20-27 | `submissions.ts`, `audit.ts`, `payments.ts` | `editor/`, `audit/`, `payments/` | `editor/` |
 | Review Process | FR28-35 | `reviews.ts`, `discussions.ts` | `reviews/`, `discussions/` | `review/` |
-| Reviewer Abstract | FR36-38 | `reviews.ts` | `reviews/` | `review/$id.tsx` |
-| Publication | FR39-43 | `submissions.ts` | `publication/` | `article/$id.tsx` |
+<!-- Updated from Epic 5 retrospective -->
+| Reviewer Abstract | FR36-38 | `reviewerAbstracts.ts` | `review/` (abstract-draft-form), `submissions/` (abstract-review-panel) | `review/$submissionId.tsx` |
+| Publication | FR39-43 | `articles.ts` (public queries, no auth) | `article/` | `article/$articleId.tsx`, `article/index.tsx` |
 | Payment Tracking | FR44-46 | `payments.ts` | `payments/` | `editor/submissions.$id.tsx` |
 | Seed Data | FR47-51 | `seed.ts` | — | — |
 | Notifications | FR52-53 | `notifications.ts` | `notifications/` | (inline in editor routes) |

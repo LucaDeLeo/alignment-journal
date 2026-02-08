@@ -222,13 +222,22 @@ Editors can view all submissions in a pipeline dashboard, consume triage reports
 **Sprint Mode:** YOLO | **Velocity:** 2.0 stories/hour (stable vs Epic 2)
 **Blocking for Epic 4:** TD-010 (auth tests, carried x3), TD-013 (triage tests, carried x2), TD-014 (submission tests, carried x2), TD-024-027 (Epic 3 P0 gaps: audit, embeddings, invitations, undo decision)
 
-### Epic 4: Review Process & Semi-Confidential Discussion
+### Epic 4: Review Process & Semi-Confidential Discussion -- COMPLETE
 Reviewers can access assigned papers via invitation links with minimal onboarding, read papers inline, submit structured reviews, and participate in semi-confidential threaded discussions with identity gating enforced by role and submission outcome.
 **FRs covered:** FR28, FR29, FR30, FR31, FR32, FR33, FR34, FR35
+**Status:** COMPLETE (implementation) | Quality gate: CONCERNS (zero tests for Epic 4 code)
+**Completed:** 2026-02-08 | **Duration:** ~155 minutes | **Stories:** 4/4 | **Tests:** 73 passing | **Commits:** 9
+**Sprint Mode:** YOLO | **Velocity:** 1.5 stories/hour
+**Review fix cycles avg:** 1.0 per story
 
-### Epic 5: Reviewer Abstract & Publication
+### Epic 5: Reviewer Abstract & Publication -- COMPLETE
 Accepted papers flow through reviewer abstract drafting, author approval, and publication as web-first article pages with dual abstracts, clean typography, and full metadata.
 **FRs covered:** FR36, FR37, FR38, FR39, FR40, FR41, FR42, FR43
+**Status:** COMPLETE (implementation) | Quality gate: CONCERNS (zero tests for Epic 5 code)
+**Completed:** 2026-02-08 | **Duration:** ~80 minutes | **Stories:** 3/3 | **Tests:** 73 passing | **Commits:** 3
+**Sprint Mode:** YOLO | **Velocity:** 2.25 stories/hour (highest across all epics)
+**Review fix cycles avg:** 0.0 (first perfect epic -- zero review fixes)
+**Tech debt resolved:** 3 (TD-029, TD-030, TD-031) | **New tech debt:** 3 (TD-032, TD-033, TD-034)
 
 ### Epic 6: Payment Tracking & Notifications
 Reviewers see transparent compensation calculations, editors view payment summaries, and the system renders in-app notification previews for all email touchpoints.
@@ -641,9 +650,13 @@ So that the editorial pipeline progresses to resolution.
 
 ---
 
-## Epic 4: Review Process & Semi-Confidential Discussion
+## Epic 4: Review Process & Semi-Confidential Discussion -- COMPLETE
+
+<!-- Updated from Epic 5 retrospective -->
 
 Reviewers can access assigned papers via invitation links with minimal onboarding, read papers inline, submit structured reviews, and participate in semi-confidential threaded discussions with identity gating enforced by role and submission outcome.
+
+> **Completion:** 2026-02-08 | All 4 stories delivered in ~155 minutes (YOLO mode). 73 tests passing (100%). Quality gate CONCERNS due to zero automated tests for Epic 4 code. Established auto-save with optimistic concurrency pattern, semi-confidential identity gating, and scheduled state transitions. Review feature folder (`app/features/review/`, 13 components). See `epic-4-retrospective.md` and `epic-4-traceability.md` for full analysis.
 
 ### Story 4.1: Reviewer Invitation Acceptance and Onboarding
 
@@ -763,9 +776,13 @@ So that the review conversation is productive while maintaining appropriate conf
 
 ---
 
-## Epic 5: Reviewer Abstract & Publication
+## Epic 5: Reviewer Abstract & Publication -- COMPLETE
+
+<!-- Updated from Epic 5 retrospective -->
 
 Accepted papers flow through reviewer abstract drafting, author approval, and publication as web-first article pages with dual abstracts, clean typography, and full metadata.
+
+> **Completion:** 2026-02-08 | All 3 stories delivered in ~80 minutes (YOLO mode). 73 tests passing (100%). Quality gate CONCERNS due to zero automated tests for Epic 5 code. Zero review fix cycles -- first epic with a perfect review record. 3 tech debt items resolved inline (TD-029, TD-030, TD-031). Article feature folder (`app/features/article/`, 3 components) established. See `epic-5-retrospective.md` and `epic-5-traceability.md` for full analysis.
 
 ### Story 5.1: Reviewer Abstract Drafting and Signing
 

@@ -252,3 +252,56 @@
 - **Fix:** Write at least one proof-of-concept component test to establish the pattern. Recommended targets: `StatusTransitionChip` (small, deterministic, tests dropdown + AlertDialog behavior) or `DecisionPanel` (tests form validation and character counter).
 - **Priority:** P1 -- Address during Epic 4 debt-fix pass
 - **Status:** Open. Identified 2026-02-08 during Epic 3 traceability assessment.
+
+<!-- Added from Epic 5 retrospective -->
+
+## TD-029: `countWords` function duplicated in `abstract-draft-form.tsx` [RESOLVED]
+- **Story:** 5-1-reviewer-abstract-drafting-and-signing
+- **Location:** `app/features/review/abstract-draft-form.tsx:40-42`
+- **Issue:** `countWords` was defined locally in `abstract-draft-form.tsx` despite being already exported from `app/features/review/review-section-field.tsx:111` (used by `pre-submit-summary.tsx`). Two identical implementations of the same function in the same feature folder.
+- **Resolution:** Removed the local `countWords` definition and imported from `./review-section-field` instead.
+- **Resolved:** 2026-02-08 (Epic 5 completion)
+
+## TD-030: Word count validation constants duplicated between backend and frontend [RESOLVED]
+- **Story:** 5-1-reviewer-abstract-drafting-and-signing
+- **Location:** `convex/reviewerAbstracts.ts:376` (magic numbers `150`/`500`), `app/features/review/abstract-draft-form.tsx:37-38` (local constants `MIN_WORDS`/`MAX_WORDS`)
+- **Issue:** The abstract word count bounds (150 min, 500 max) were defined independently in the backend `submitAbstract` mutation as magic numbers and in the frontend as local constants. Changing the limits would require updating both locations. Same pattern as TD-022 (DECISION_NOTE_MAX_LENGTH).
+- **Resolution:** Exported `ABSTRACT_MIN_WORDS` and `ABSTRACT_MAX_WORDS` from `convex/reviewerAbstracts.ts`. Frontend imports from the backend module. Magic numbers in `submitAbstract` replaced with the shared constants.
+- **Resolved:** 2026-02-08 (Epic 5 completion)
+
+## TD-031: `updateContent` mutation used `Record<string, unknown>` losing type safety [RESOLVED]
+- **Story:** 5-2-author-acceptance-of-reviewer-abstract
+- **Location:** `convex/reviewerAbstracts.ts:259`
+- **Issue:** The `updateContent` mutation built its patch object as `Record<string, unknown>` to conditionally include `authorAccepted: false` and `authorAcceptedAt: undefined` when clearing acceptance. This lost Convex's type checking for the patch fields -- any field name typo would be silently accepted.
+- **Resolution:** Replaced with two properly typed `ctx.db.patch()` calls inside a conditional branch. Each branch provides a fully typed literal object to `patch()`, restoring Convex's type inference.
+- **Resolved:** 2026-02-08 (Epic 5 completion)
+
+## TD-032: Zero tests for reviewer abstract lifecycle mutations
+- **Story:** Epic 5 retrospective (spans 5-1:AC2, 5-1:AC3, 5-1:AC5, 5-1:AC7, 5-1:AC8)
+- **Location:** `convex/reviewerAbstracts.ts`
+- **Severity:** P0
+- **Description:** The reviewer abstract module has zero automated tests. Untested critical paths: `createDraft` validation (ACCEPTED status, reviewer has review, one-abstract-per-submission constraint), `updateContent` optimistic concurrency and author acceptance clearing, `submitAbstract` word count validation and idempotency, `approveAbstract` terminal state enforcement, `authorAcceptAbstract` ownership validation and idempotency. The module has 6 exported functions handling the complete abstract lifecycle.
+- **Impact:** Data integrity risk -- the one-abstract-per-submission invariant, word count validation, and acceptance clearing on content change are all unverified. A code change could silently break the abstract workflow.
+- **Fix:** Write unit tests for: `createDraft` validation guards, `updateContent` concurrency control and acceptance clearing, `submitAbstract` word count bounds (using shared ABSTRACT_MIN_WORDS/ABSTRACT_MAX_WORDS constants), `authorAcceptAbstract` ownership check and idempotency.
+- **Priority:** P0 -- Must resolve before Epic 6 feature work
+- **Status:** Open. Identified 2026-02-08 during Epic 5 debt-fix pass.
+
+## TD-033: Zero tests for public article queries
+- **Story:** Epic 5 retrospective (spans 5-3:AC1, 5-3:AC2)
+- **Location:** `convex/articles.ts`
+- **Severity:** P0
+- **Description:** The public article queries (`getPublishedArticle`, `listPublished`) have zero automated tests. These are the only unauthenticated queries in the system besides `getInviteStatus`. Untested: `getPublishedArticle` rejects non-PUBLISHED submissions, reviewer abstract display gating (`status === 'approved' && authorAccepted === true`), PDF URL generation. Since these queries are public (no auth wrapper), any data leak bug is exploitable without authentication.
+- **Impact:** Security risk -- public query filtering is unverified. A regression could expose unpublished submissions or unapproved reviewer abstracts to anonymous readers.
+- **Fix:** Write unit tests for: `getPublishedArticle` rejection of non-PUBLISHED submissions, reviewer abstract conditional inclusion, `listPublished` pagination and status filtering.
+- **Priority:** P0 -- Must resolve before Epic 6 feature work
+- **Status:** Open. Identified 2026-02-08 during Epic 5 debt-fix pass.
+
+## TD-034: Zero component tests for Epic 5 frontend components (4 new + 1 updated)
+- **Story:** Epic 5 retrospective (spans all Epic 5 frontend)
+- **Location:** `app/features/article/` (3 components), `app/features/review/abstract-draft-form.tsx`, `app/features/submissions/abstract-review-panel.tsx`
+- **Severity:** P1
+- **Description:** Epic 5 added 3 new components to `app/features/article/` (ArticlePage, DualAbstractDisplay, ArticleMetadata), created AbstractDraftForm in `app/features/review/`, and created AbstractReviewPanel in `app/features/submissions/`. Zero component-level tests. Combined with TD-015 and TD-028, the project now has 32+ frontend components with no component-level verification.
+- **Impact:** Frontend behavior for the entire publication flow is unverified.
+- **Fix:** Priority targets: `DualAbstractDisplay` (small, deterministic, tests dual vs single abstract rendering) and `WordCounter` (tests color logic based on word count range).
+- **Priority:** P1 -- Address during Epic 6 debt-fix pass
+- **Status:** Open. Identified 2026-02-08 during Epic 5 debt-fix pass.

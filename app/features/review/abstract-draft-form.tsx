@@ -10,8 +10,13 @@ import {
 import * as React from 'react'
 
 import { useMutation, useQuery } from 'convex/react'
+import {
+  ABSTRACT_MAX_WORDS,
+  ABSTRACT_MIN_WORDS,
+} from 'convex/reviewerAbstracts'
 
 import { api } from 'convex/_generated/api'
+import { countWords } from './review-section-field'
 import { SaveIndicator } from './save-indicator'
 
 import type { Id } from 'convex/_generated/dataModel'
@@ -34,23 +39,17 @@ import { Switch } from '~/components/ui/switch'
 import { Textarea } from '~/components/ui/textarea'
 
 const DEBOUNCE_MS = 500
-const MIN_WORDS = 150
-const MAX_WORDS = 500
-
-function countWords(text: string): number {
-  return text.trim().split(/\s+/).filter(Boolean).length
-}
 
 function WordCounter({ count }: { count: number }) {
   let colorClass = 'text-amber-500'
-  let hint = `${MIN_WORDS} min`
+  let hint = `${ABSTRACT_MIN_WORDS} min`
 
-  if (count >= MIN_WORDS && count <= MAX_WORDS) {
+  if (count >= ABSTRACT_MIN_WORDS && count <= ABSTRACT_MAX_WORDS) {
     colorClass = 'text-green-600 dark:text-green-400'
     hint = ''
-  } else if (count > MAX_WORDS) {
+  } else if (count > ABSTRACT_MAX_WORDS) {
     colorClass = 'text-red-500'
-    hint = `${MAX_WORDS} max`
+    hint = `${ABSTRACT_MAX_WORDS} max`
   }
 
   return (
@@ -155,7 +154,7 @@ function AbstractEditor({
 
   const isEditable = status !== 'approved'
   const wordCount = countWords(localContent)
-  const isWordCountValid = wordCount >= MIN_WORDS && wordCount <= MAX_WORDS
+  const isWordCountValid = wordCount >= ABSTRACT_MIN_WORDS && wordCount <= ABSTRACT_MAX_WORDS
 
   // Sync server state when it changes (if no pending save/conflict)
   React.useEffect(() => {
@@ -353,7 +352,7 @@ function AbstractEditor({
             <p className="mt-1 font-sans text-xs text-muted-foreground">
               Write the abstract a potential reader would most want to
               read. Summarize the paper&apos;s key contribution and
-              significance in {MIN_WORDS}-{MAX_WORDS} words.
+              significance in {ABSTRACT_MIN_WORDS}-{ABSTRACT_MAX_WORDS} words.
             </p>
           </div>
         </div>

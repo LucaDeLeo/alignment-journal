@@ -14,6 +14,9 @@ import { EDITOR_ROLES } from './helpers/roles'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 
+export const ABSTRACT_MIN_WORDS = 150
+export const ABSTRACT_MAX_WORDS = 500
+
 const abstractStatusValidator = v.union(
   v.literal('drafting'),
   v.literal('submitted'),
@@ -256,20 +259,26 @@ export const updateContent = mutation({
       }
 
       const newRevision = abstract.revision + 1
-      const patch: Record<string, unknown> = {
-        content: args.content,
-        wordCount: countWords(args.content),
-        revision: newRevision,
-        updatedAt: Date.now(),
-      }
+      const now = Date.now()
 
       // Clear author acceptance if abstract was previously accepted
       if (abstract.authorAccepted === true) {
-        patch.authorAccepted = false
-        patch.authorAcceptedAt = undefined
+        await ctx.db.patch('reviewerAbstracts', abstract._id, {
+          content: args.content,
+          wordCount: countWords(args.content),
+          revision: newRevision,
+          updatedAt: now,
+          authorAccepted: false,
+          authorAcceptedAt: undefined,
+        })
+      } else {
+        await ctx.db.patch('reviewerAbstracts', abstract._id, {
+          content: args.content,
+          wordCount: countWords(args.content),
+          revision: newRevision,
+          updatedAt: now,
+        })
       }
-
-      await ctx.db.patch('reviewerAbstracts', abstract._id, patch)
 
       return { revision: newRevision }
     },
@@ -373,9 +382,12 @@ export const submitAbstract = mutation({
         throw versionConflictError()
       }
 
-      if (abstract.wordCount < 150 || abstract.wordCount > 500) {
+      if (
+        abstract.wordCount < ABSTRACT_MIN_WORDS ||
+        abstract.wordCount > ABSTRACT_MAX_WORDS
+      ) {
         throw validationError(
-          'Abstract must be between 150 and 500 words',
+          `Abstract must be between ${ABSTRACT_MIN_WORDS} and ${ABSTRACT_MAX_WORDS} words`,
         )
       }
 
