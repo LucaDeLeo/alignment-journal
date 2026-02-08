@@ -9,6 +9,7 @@
  */
 
 import type * as audit from "../audit.js";
+import type * as matching from "../matching.js";
 import type * as storage from "../storage.js";
 import type * as submissions from "../submissions.js";
 import type * as triage from "../triage.js";
@@ -25,6 +26,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   audit: typeof audit;
+  matching: typeof matching;
   storage: typeof storage;
   submissions: typeof submissions;
   triage: typeof triage;

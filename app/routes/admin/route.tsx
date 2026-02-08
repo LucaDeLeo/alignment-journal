@@ -10,7 +10,7 @@ import { ErrorBoundary } from '~/components/error-boundary'
 import { RouteSkeleton } from '~/components/route-skeleton'
 import { hasRole, useBootstrappedUser } from '~/features/auth'
 
-const ALLOWED_ROLES = ['admin'] as const
+const ALLOWED_ROLES = ['admin', 'editor_in_chief'] as const
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: ({ context }) => {
