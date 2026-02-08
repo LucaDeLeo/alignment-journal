@@ -58,7 +58,7 @@ development_status:
 
   # Epic 3: Editor Dashboard & Reviewer Assignment
   epic-3: backlog
-  3-1-editor-pipeline-dashboard: backlog
+  3-1-editor-pipeline-dashboard:done
   3-2-submission-detail-view-with-triage-results: backlog
   3-3-action-editor-assignment-and-audit-trail: backlog
   3-4-reviewer-profile-management-and-embedding-generation: backlog

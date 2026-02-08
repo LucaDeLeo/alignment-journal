@@ -9,6 +9,7 @@ import * as React from 'react'
 import { ErrorBoundary } from '~/components/error-boundary'
 import { RouteSkeleton } from '~/components/route-skeleton'
 import { hasRole, useBootstrappedUser } from '~/features/auth'
+import { EditorSidebar } from '~/features/editor'
 
 const ALLOWED_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
 
@@ -43,12 +44,15 @@ function EditorLayout() {
   }
 
   return (
-    <div data-mode="editor" className="min-h-[calc(100vh-3.5rem)] bg-background">
-      <ErrorBoundary>
-        <React.Suspense fallback={<RouteSkeleton variant="sidebar" />}>
-          <Outlet />
-        </React.Suspense>
-      </ErrorBoundary>
+    <div data-mode="editor" className="flex min-h-[calc(100vh-3.5rem)] bg-background">
+      <EditorSidebar />
+      <main className="flex-1 overflow-y-auto">
+        <ErrorBoundary>
+          <React.Suspense fallback={<RouteSkeleton variant="default" />}>
+            <Outlet />
+          </React.Suspense>
+        </ErrorBoundary>
+      </main>
     </div>
   )
 }
