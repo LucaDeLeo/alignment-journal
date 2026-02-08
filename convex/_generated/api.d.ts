@@ -8,8 +8,12 @@
  * @module
  */
 
-import type * as posts from "../posts.js";
-import type * as user from "../user.js";
+import type * as storage from "../storage.js";
+import type * as submissions from "../submissions.js";
+import type * as users from "../users.js";
+import type * as helpers_auth from "../helpers/auth.js";
+import type * as helpers_errors from "../helpers/errors.js";
+import type * as helpers_transitions from "../helpers/transitions.js";
 
 import type {
   ApiFromModules,
@@ -18,8 +22,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  posts: typeof posts;
-  user: typeof user;
+  storage: typeof storage;
+  submissions: typeof submissions;
+  users: typeof users;
+  "helpers/auth": typeof helpers_auth;
+  "helpers/errors": typeof helpers_errors;
+  "helpers/transitions": typeof helpers_transitions;
 }>;
 
 /**

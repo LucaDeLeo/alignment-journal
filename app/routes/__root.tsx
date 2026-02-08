@@ -27,6 +27,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { RoleBadge, RoleSwitcher, useBootstrappedUser } from '~/features/auth'
 import { Button } from '~/components/ui/button'
 import { Kbd } from '~/components/ui/kbd'
+import { Toaster } from '~/components/ui/sonner'
 import { CommandPalette } from '~/components/command-palette'
 import appCss from '~/styles/globals.css?url'
 
@@ -223,6 +224,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         {children}
+        <Toaster />
         <Scripts />
       </body>
     </html>
