@@ -31,6 +31,7 @@ export default defineSchema({
     pdfStorageId: v.optional(v.id('_storage')),
     pdfFileName: v.optional(v.string()),
     pdfFileSize: v.optional(v.number()),
+    extractedText: v.optional(v.string()),
     actionEditorId: v.optional(v.id('users')),
     assignedAt: v.optional(v.number()),
     decisionNote: v.optional(v.string()),

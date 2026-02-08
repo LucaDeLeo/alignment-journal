@@ -12,12 +12,15 @@ import type * as audit from "../audit.js";
 import type * as decisions from "../decisions.js";
 import type * as invitations from "../invitations.js";
 import type * as matching from "../matching.js";
+import type * as pdfExtraction from "../pdfExtraction.js";
+import type * as reviews from "../reviews.js";
 import type * as storage from "../storage.js";
 import type * as submissions from "../submissions.js";
 import type * as triage from "../triage.js";
 import type * as users from "../users.js";
 import type * as helpers_auth from "../helpers/auth.js";
 import type * as helpers_errors from "../helpers/errors.js";
+import type * as helpers_roles from "../helpers/roles.js";
 import type * as helpers_transitions from "../helpers/transitions.js";
 
 import type {
@@ -31,12 +34,15 @@ declare const fullApi: ApiFromModules<{
   decisions: typeof decisions;
   invitations: typeof invitations;
   matching: typeof matching;
+  pdfExtraction: typeof pdfExtraction;
+  reviews: typeof reviews;
   storage: typeof storage;
   submissions: typeof submissions;
   triage: typeof triage;
   users: typeof users;
   "helpers/auth": typeof helpers_auth;
   "helpers/errors": typeof helpers_errors;
+  "helpers/roles": typeof helpers_roles;
   "helpers/transitions": typeof helpers_transitions;
 }>;
 
