@@ -109,6 +109,18 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - JetBrains Mono (mono): self-hosted woff2 in `public/fonts/jetbrains-mono/`
 - Newsreader (serif): Google Fonts CDN link in `__root.tsx`
 
+## Convex Reference Docs
+Before writing or modifying Convex code, read the relevant skill files for up-to-date patterns:
+- `.claude/skills/convex-functions/SKILL.md` - Queries, mutations, actions, argument validation, internal functions
+- `.claude/skills/convex-best-practices/SKILL.md` - Production patterns, error handling, Zen of Convex
+- `.claude/skills/convex-schema-validator/SKILL.md` - Schema definition, validators, indexes, migrations
+- `.claude/skills/convex-realtime/SKILL.md` - Subscriptions, optimistic updates, paginated queries
+- `.claude/skills/convex-file-storage/SKILL.md` - Upload flows, serving files, storage IDs
+- `.claude/skills/convex-security-check/SKILL.md` - Auth, access control, argument validation
+- `.claude/skills/convex-http-actions/SKILL.md` - HTTP endpoints, webhooks, CORS
+
+Read the index at `.claude/skills/convex/SKILL.md` to find the right skill for your task.
+
 ## Commands
 - `bun dev` - Start dev servers (Vite + Convex)
 - `bun run build` - Production build
