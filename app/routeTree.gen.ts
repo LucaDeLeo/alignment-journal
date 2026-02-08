@@ -22,6 +22,7 @@ import { Route as ArticleIndexRouteImport } from './routes/article/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as SubmitSubmissionIdRouteImport } from './routes/submit/$submissionId'
 import { Route as EditorSubmissionIdRouteImport } from './routes/editor/$submissionId'
+import { Route as ReviewAcceptTokenRouteImport } from './routes/review/accept/$token'
 
 const SubmitRouteRoute = SubmitRouteRouteImport.update({
   id: '/submit',
@@ -88,6 +89,11 @@ const EditorSubmissionIdRoute = EditorSubmissionIdRouteImport.update({
   path: '/$submissionId',
   getParentRoute: () => EditorRouteRoute,
 } as any)
+const ReviewAcceptTokenRoute = ReviewAcceptTokenRouteImport.update({
+  id: '/accept/$token',
+  path: '/accept/$token',
+  getParentRoute: () => ReviewRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/editor/': typeof EditorIndexRoute
   '/review/': typeof ReviewIndexRoute
   '/submit/': typeof SubmitIndexRoute
+  '/review/accept/$token': typeof ReviewAcceptTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/editor': typeof EditorIndexRoute
   '/review': typeof ReviewIndexRoute
   '/submit': typeof SubmitIndexRoute
+  '/review/accept/$token': typeof ReviewAcceptTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/editor/': typeof EditorIndexRoute
   '/review/': typeof ReviewIndexRoute
   '/submit/': typeof SubmitIndexRoute
+  '/review/accept/$token': typeof ReviewAcceptTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/editor/'
     | '/review/'
     | '/submit/'
+    | '/review/accept/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/editor'
     | '/review'
     | '/submit'
+    | '/review/accept/$token'
   id:
     | '__root__'
     | '/'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/editor/'
     | '/review/'
     | '/submit/'
+    | '/review/accept/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -275,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EditorSubmissionIdRouteImport
       parentRoute: typeof EditorRouteRoute
     }
+    '/review/accept/$token': {
+      id: '/review/accept/$token'
+      path: '/accept/$token'
+      fullPath: '/review/accept/$token'
+      preLoaderRoute: typeof ReviewAcceptTokenRouteImport
+      parentRoute: typeof ReviewRouteRoute
+    }
   }
 }
 
@@ -318,10 +337,12 @@ const EditorRouteRouteWithChildren = EditorRouteRoute._addFileChildren(
 
 interface ReviewRouteRouteChildren {
   ReviewIndexRoute: typeof ReviewIndexRoute
+  ReviewAcceptTokenRoute: typeof ReviewAcceptTokenRoute
 }
 
 const ReviewRouteRouteChildren: ReviewRouteRouteChildren = {
   ReviewIndexRoute: ReviewIndexRoute,
+  ReviewAcceptTokenRoute: ReviewAcceptTokenRoute,
 }
 
 const ReviewRouteRouteWithChildren = ReviewRouteRoute._addFileChildren(

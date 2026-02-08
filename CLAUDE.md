@@ -56,6 +56,7 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Mode-specific styling via `data-mode` attribute on layout wrapper div
 - Auth guard: `beforeLoad` checks `context.userId`, layout component checks role via `useBootstrappedUser`
 - `/article/` is public (no auth guard); all others require authentication
+- Route layout bypass: `/review/accept/$token` bypasses the review layout's auth/role guard via `pathname.startsWith('/review/accept/')` check in both `beforeLoad` and the layout component. The accept page handles its own auth flow with inline Clerk `<SignIn>`.
 
 ### Design System Modes
 - CSS custom property overrides via `[data-mode]` attribute selectors in `globals.css`
@@ -77,7 +78,7 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 
 ### Auth Wrappers (Convex RBAC)
 - `convex/helpers/auth.ts` - HOF wrappers: `withUser`, `withRole`, `withAuthor`, `withEditor`, `withAdmin`, `withReviewer`, `withActionEditor`
-- All Convex mutations/queries use a wrapper except `ensureUser` (bootstraps the user record on first auth, cannot require an existing user)
+- All Convex mutations/queries use a wrapper except `ensureUser` (bootstraps the user record on first auth, cannot require an existing user) and `getInviteStatus` (public query, no auth — allows checking invite status before sign-in)
 - `me` query uses the Convex "skip" pattern: gated on `isBootstrapped` state so it does not fire before `ensureUser` completes
 - `switchRole` mutation has a server-side guard checking `DEMO_ROLE_SWITCHER` env var -- disabled in production to prevent role self-escalation
 - Editor role gating: most editor functions use `withUser` + manual `EDITOR_ROLES.includes(ctx.user.role)` check (from `convex/helpers/roles.ts`) because the `withEditor` wrapper is too restrictive (only allows `editor_in_chief`)
@@ -86,7 +87,7 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 <!-- Added from Epic 3 retrospective -->
 - `convex/audit.ts` - `logAction` internalMutation (append-only, only write path to `auditLogs` table)
 - Deferred write pattern: `ctx.scheduler.runAfter(0, internal.audit.logAction, { submissionId, actorId, actorRole, action, details })`
-- Used by: `transitionStatus`, `assignActionEditor`, `sendInvitations`, `revokeInvitation`, `makeDecision`, `undoDecision`
+- Used by: `transitionStatus`, `assignActionEditor`, `sendInvitations`, `revokeInvitation`, `acceptInvitation`, `makeDecision`, `undoDecision`
 - `AuditTimeline` component in `app/features/editor/audit-timeline.tsx` subscribes reactively via `usePaginatedQuery`
 - Action labels mapped in `audit-timeline.tsx` -- when adding new action types, update the `ACTION_LABELS` mapping in the same story
 

@@ -3,7 +3,13 @@ import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { mutation, query } from './_generated/server'
 import { withUser } from './helpers/auth'
-import { unauthorizedError, validationError } from './helpers/errors'
+import {
+  inviteTokenExpiredError,
+  inviteTokenInvalidError,
+  inviteTokenUsedError,
+  unauthorizedError,
+  validationError,
+} from './helpers/errors'
 import { EDITOR_ROLES } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
@@ -287,9 +293,131 @@ export const revokeInvitation = mutation({
   ),
 })
 
+/**
+ * Accepts an invitation by validating the token, consuming it, and upgrading
+ * the user's role from 'author' to 'reviewer' if needed.
+ */
+export const acceptInvitation = mutation({
+  args: {
+    token: v.string(),
+  },
+  returns: v.object({
+    submissionId: v.id('submissions'),
+    reviewerId: v.id('users'),
+  }),
+  handler: withUser(
+    async (
+      ctx: MutationCtx & { user: Doc<'users'> },
+      args: { token: string },
+    ) => {
+      const tokenHash = await hashToken(args.token)
+
+      const invite = await ctx.db
+        .query('reviewInvites')
+        .withIndex('by_tokenHash', (q) => q.eq('tokenHash', tokenHash))
+        .unique()
+
+      if (!invite) {
+        throw inviteTokenInvalidError()
+      }
+
+      if (invite.revokedAt !== undefined) {
+        throw inviteTokenInvalidError()
+      }
+
+      if (invite.consumedAt !== undefined) {
+        throw inviteTokenUsedError()
+      }
+
+      if (invite.expiresAt < Date.now()) {
+        throw inviteTokenExpiredError()
+      }
+
+      // Verify the authenticated user is the intended reviewer
+      if (invite.reviewerId !== ctx.user._id) {
+        throw unauthorizedError(
+          'This invitation was sent to a different reviewer',
+        )
+      }
+
+      // Atomically consume the invitation
+      await ctx.db.patch('reviewInvites', invite._id, {
+        consumedAt: Date.now(),
+      })
+
+      // Upgrade role from author to reviewer (never downgrade)
+      if (ctx.user.role === 'author') {
+        await ctx.db.patch('users', ctx.user._id, {
+          role: 'reviewer',
+        })
+      }
+
+      // Log audit entry
+      await ctx.scheduler.runAfter(0, internal.audit.logAction, {
+        submissionId: invite.submissionId,
+        actorId: ctx.user._id,
+        actorRole: ctx.user.role,
+        action: 'invitation_accepted',
+        details: `${ctx.user.name} accepted the invitation`,
+      })
+
+      return {
+        submissionId: invite.submissionId,
+        reviewerId: ctx.user._id,
+      }
+    },
+  ),
+})
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
+
+/**
+ * Public query to check the status of an invitation token without consuming it.
+ * Does NOT require authentication.
+ */
+export const getInviteStatus = query({
+  args: {
+    token: v.string(),
+  },
+  returns: v.object({
+    status: v.union(
+      v.literal('valid'),
+      v.literal('expired'),
+      v.literal('consumed'),
+      v.literal('revoked'),
+      v.literal('invalid'),
+    ),
+    submissionId: v.optional(v.id('submissions')),
+  }),
+  handler: async (ctx, args) => {
+    const tokenHash = await hashToken(args.token)
+
+    const invite = await ctx.db
+      .query('reviewInvites')
+      .withIndex('by_tokenHash', (q) => q.eq('tokenHash', tokenHash))
+      .unique()
+
+    if (!invite) {
+      return { status: 'invalid' as const }
+    }
+
+    if (invite.revokedAt !== undefined) {
+      return { status: 'revoked' as const, submissionId: invite.submissionId }
+    }
+
+    if (invite.consumedAt !== undefined) {
+      return { status: 'consumed' as const, submissionId: invite.submissionId }
+    }
+
+    if (invite.expiresAt < Date.now()) {
+      return { status: 'expired' as const, submissionId: invite.submissionId }
+    }
+
+    return { status: 'valid' as const, submissionId: invite.submissionId }
+  },
+})
 
 /**
  * Derives the status of an invitation from its fields.

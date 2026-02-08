@@ -16,6 +16,7 @@ const ACTION_LABELS: Record<string, string> = {
   action_editor_reassigned: 'Reassignment',
   reviewer_invited: 'Reviewer invited',
   reviewer_invite_revoked: 'Invitation revoked',
+  invitation_accepted: 'Invitation accepted',
   decision_accepted: 'Accepted',
   decision_rejected: 'Rejected',
   decision_revision_requested: 'Revision requested',
