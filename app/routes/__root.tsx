@@ -33,6 +33,9 @@ import appCss from '~/styles/globals.css?url'
 
 const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
   const { getToken, userId } = await auth()
+  if (!userId) {
+    return { userId: null, token: null }
+  }
   const token = await getToken({ template: 'convex' })
 
   return {

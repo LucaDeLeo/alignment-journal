@@ -21,8 +21,8 @@ import { Route as EditorIndexRouteImport } from './routes/editor/index'
 import { Route as ArticleIndexRouteImport } from './routes/article/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as SubmitSubmissionIdRouteImport } from './routes/submit/$submissionId'
-import { Route as EditorSubmissionIdRouteImport } from './routes/editor/$submissionId'
 import { Route as ReviewSubmissionIdRouteImport } from './routes/review/$submissionId'
+import { Route as EditorSubmissionIdRouteImport } from './routes/editor/$submissionId'
 import { Route as ReviewAcceptTokenRouteImport } from './routes/review/accept/$token'
 
 const SubmitRouteRoute = SubmitRouteRouteImport.update({
@@ -85,15 +85,15 @@ const SubmitSubmissionIdRoute = SubmitSubmissionIdRouteImport.update({
   path: '/$submissionId',
   getParentRoute: () => SubmitRouteRoute,
 } as any)
-const EditorSubmissionIdRoute = EditorSubmissionIdRouteImport.update({
-  id: '/$submissionId',
-  path: '/$submissionId',
-  getParentRoute: () => EditorRouteRoute,
-} as any)
 const ReviewSubmissionIdRoute = ReviewSubmissionIdRouteImport.update({
   id: '/$submissionId',
   path: '/$submissionId',
   getParentRoute: () => ReviewRouteRoute,
+} as any)
+const EditorSubmissionIdRoute = EditorSubmissionIdRouteImport.update({
+  id: '/$submissionId',
+  path: '/$submissionId',
+  getParentRoute: () => EditorRouteRoute,
 } as any)
 const ReviewAcceptTokenRoute = ReviewAcceptTokenRouteImport.update({
   id: '/accept/$token',
@@ -292,19 +292,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubmitSubmissionIdRouteImport
       parentRoute: typeof SubmitRouteRoute
     }
-    '/editor/$submissionId': {
-      id: '/editor/$submissionId'
-      path: '/$submissionId'
-      fullPath: '/editor/$submissionId'
-      preLoaderRoute: typeof EditorSubmissionIdRouteImport
-      parentRoute: typeof EditorRouteRoute
-    }
     '/review/$submissionId': {
       id: '/review/$submissionId'
       path: '/$submissionId'
       fullPath: '/review/$submissionId'
       preLoaderRoute: typeof ReviewSubmissionIdRouteImport
       parentRoute: typeof ReviewRouteRoute
+    }
+    '/editor/$submissionId': {
+      id: '/editor/$submissionId'
+      path: '/$submissionId'
+      fullPath: '/editor/$submissionId'
+      preLoaderRoute: typeof EditorSubmissionIdRouteImport
+      parentRoute: typeof EditorRouteRoute
     }
     '/review/accept/$token': {
       id: '/review/accept/$token'

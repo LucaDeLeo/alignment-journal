@@ -22,7 +22,7 @@ export function ReviewerMatchPanel({
   const matchResults = useQuery(api.matching.getMatchResults, {
     submissionId,
   })
-  const findMatches = useAction(api.matching.findMatches)
+  const findMatches = useAction(api.matchingActions.findMatches)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())

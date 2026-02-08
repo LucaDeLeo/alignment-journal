@@ -22,25 +22,33 @@
 ## db.get() Usage
 - Convex supports both `ctx.db.get(id)` and `ctx.db.get('tableName', id)` overloads
 
-## Embedding Generation Pattern (`matching.ts`)
-- `"use node";` first line for OpenAI SDK access
-- Deferred scheduling: mutation calls `ctx.scheduler.runAfter(0, internal.matching.generateEmbedding, { profileId })`
+## Node.js Action Split Pattern
+- Convex `"use node"` files can only export actions/internalActions (not queries/mutations)
+- Each domain module is split into two files:
+  - `{name}.ts` — queries, mutations, internalQueries, internalMutations (default Convex runtime)
+  - `{name}Actions.ts` — actions and internalActions with `"use node"` (Node.js runtime)
+- API paths: `internal.matching.*` for queries/mutations, `internal.matchingActions.*` for actions
+- Frontend: `api.matching.*` for queries/mutations, `api.matchingActions.*` for actions
+
+## Embedding Generation Pattern (`matching.ts` + `matchingActions.ts`)
+- Deferred scheduling: mutation calls `ctx.scheduler.runAfter(0, internal.matchingActions.generateEmbedding, { profileId })`
 - Stale-check in `saveEmbedding`: compares `updatedAt` from profile read against current profile `updatedAt` to prevent concurrent job overwrites
 - `getProfileInternal` (internalQuery) and `saveEmbedding` (internalMutation) are internal-only — not client-accessible
 - OpenAI `text-embedding-3-large` with explicit `dimensions: 1536` (default is 3072)
 
-## Vector Search + LLM Enrichment Pattern (`matching.ts`)
+## Vector Search + LLM Enrichment Pattern (`matchingActions.ts`)
 - `findMatches` action: generates paper embedding → `ctx.vectorSearch()` → LLM rationale → saves results
 - `ctx.vectorSearch()` only available in actions (not queries/mutations); returns `Array<{ _id, _score }>`
-- Results persisted to `matchResults` table via `saveMatchResults` internalMutation (upsert semantics)
+- Results persisted to `matchResults` table via `internal.matching.saveMatchResults` internalMutation (upsert semantics)
 - UI subscribes reactively via `useQuery(api.matching.getMatchResults)` for status-driven rendering
 - LLM rationale via Vercel AI SDK `generateObject` with zod schema; graceful fallback to keyword-overlap rationale
 - Error sanitization via `sanitizeErrorMessage` before writing to client-visible `matchResults.error` field
 - `@ai-sdk/openai` provider with `gpt-4o-mini` for cost-efficient rationale generation
 
-## Chained Action Pattern (`triage.ts`)
-- `"use node";` must be first line for Node.js runtime (required by `unpdf`, `ai`, `@ai-sdk/anthropic`)
-- Chained internalActions: each action writes results via internalMutation, then schedules the next action via `ctx.scheduler.runAfter(0, ...)`
+## Chained Action Pattern (`triage.ts` + `triageActions.ts`)
+- `triageActions.ts` has `"use node"` for Node.js runtime (required by `unpdf`, `ai`, `@ai-sdk/anthropic`)
+- `triage.ts` has mutations/queries in default runtime; schedules actions via `internal.triageActions.runScope`
+- Chained internalActions: each action writes results via `internal.triage.*` internalMutations, then schedules the next action via `ctx.scheduler.runAfter(0, internal.triageActions.*, ...)`
 - Retry: track `attemptCount` via action args (not DB), re-schedule self with exponential backoff (max 3 attempts)
 - Idempotency: use `idempotencyKey` index to prevent duplicate writes; `writeResult` no-ops if already `complete`
 - Terminal state guards: `markRunning` won't overwrite `complete`/`failed`; `markFailed` won't overwrite `complete`

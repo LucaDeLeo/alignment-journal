@@ -72,7 +72,7 @@ development_status:
   4-1-reviewer-invitation-acceptance-and-onboarding:done
   4-2-split-view-review-workspace-with-inline-pdf:done
   4-3-structured-review-form-with-auto-save:done
-  4-4-semi-confidential-threaded-discussion: backlog
+  4-4-semi-confidential-threaded-discussion:done
   epic-4-retrospective: optional
 
   # Epic 5: Reviewer Abstract & Publication
