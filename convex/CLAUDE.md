@@ -29,6 +29,15 @@
 - `getProfileInternal` (internalQuery) and `saveEmbedding` (internalMutation) are internal-only — not client-accessible
 - OpenAI `text-embedding-3-large` with explicit `dimensions: 1536` (default is 3072)
 
+## Vector Search + LLM Enrichment Pattern (`matching.ts`)
+- `findMatches` action: generates paper embedding → `ctx.vectorSearch()` → LLM rationale → saves results
+- `ctx.vectorSearch()` only available in actions (not queries/mutations); returns `Array<{ _id, _score }>`
+- Results persisted to `matchResults` table via `saveMatchResults` internalMutation (upsert semantics)
+- UI subscribes reactively via `useQuery(api.matching.getMatchResults)` for status-driven rendering
+- LLM rationale via Vercel AI SDK `generateObject` with zod schema; graceful fallback to keyword-overlap rationale
+- Error sanitization via `sanitizeErrorMessage` before writing to client-visible `matchResults.error` field
+- `@ai-sdk/openai` provider with `gpt-4o-mini` for cost-efficient rationale generation
+
 ## Chained Action Pattern (`triage.ts`)
 - `"use node";` must be first line for Node.js runtime (required by `unpdf`, `ai`, `@ai-sdk/anthropic`)
 - Chained internalActions: each action writes results via internalMutation, then schedules the next action via `ctx.scheduler.runAfter(0, ...)`
