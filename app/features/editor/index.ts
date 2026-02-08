@@ -10,6 +10,7 @@ export {
   SUBMISSION_STATUSES,
 } from './editor-constants'
 export { EditorSubmissionDetail } from './submission-detail-editor'
+export { PaymentSummaryTable } from './payment-summary-table'
 export { InvitationPanel } from './invitation-panel'
 export { PipelineFilters } from './pipeline-filters'
 export { ReviewerMatchCard } from './reviewer-match-card'

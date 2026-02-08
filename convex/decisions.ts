@@ -1,7 +1,7 @@
 import { v } from 'convex/values'
 
 import { internal } from './_generated/api'
-import { mutation, query } from './_generated/server'
+import { mutation } from './_generated/server'
 import { withUser } from './helpers/auth'
 import {
   notFoundError,
@@ -12,7 +12,7 @@ import { EDITOR_ROLES } from './helpers/roles'
 import { assertTransition } from './helpers/transitions'
 
 import type { Doc, Id } from './_generated/dataModel'
-import type { MutationCtx, QueryCtx } from './_generated/server'
+import type { MutationCtx } from './_generated/server'
 
 export const DECISION_NOTE_MAX_LENGTH = 2000
 
@@ -270,87 +270,3 @@ export const undoDecision = mutation({
   ),
 })
 
-/**
- * Computes basic per-reviewer payment estimates for the decision context.
- * Returns ranges based on review status (detailed formula deferred to Epic 6).
- */
-export const getPaymentEstimates = query({
-  args: {
-    submissionId: v.id('submissions'),
-  },
-  returns: v.array(
-    v.object({
-      reviewerId: v.id('users'),
-      reviewerName: v.string(),
-      reviewStatus: v.string(),
-      estimateMin: v.number(),
-      estimateMax: v.number(),
-    }),
-  ),
-  handler: withUser(
-    async (
-      ctx: QueryCtx & { user: Doc<'users'> },
-      args: { submissionId: Id<'submissions'> },
-    ) => {
-      // Authorization: editor-level access
-      if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
-      ) {
-        throw unauthorizedError(
-          'Requires editor, action editor, or admin role',
-        )
-      }
-
-      // Read all reviews for the submission
-      const reviews = await ctx.db
-        .query('reviews')
-        .withIndex('by_submissionId', (idx) =>
-          idx.eq('submissionId', args.submissionId),
-        )
-        .collect()
-
-      // Deduplicate by reviewerId, keeping the most recent review per reviewer
-      const latestByReviewer = new Map<Id<'users'>, (typeof reviews)[number]>()
-      for (const review of reviews) {
-        const existing = latestByReviewer.get(review.reviewerId)
-        if (!existing || review.updatedAt > existing.updatedAt) {
-          latestByReviewer.set(review.reviewerId, review)
-        }
-      }
-
-      const estimates = await Promise.all(
-        Array.from(latestByReviewer.values()).map(async (review) => {
-          const reviewer = await ctx.db.get('users', review.reviewerId)
-          const reviewerName = reviewer?.name ?? 'Unknown'
-
-          let estimateMin: number
-          let estimateMax: number
-
-          if (review.status === 'submitted' || review.status === 'locked') {
-            estimateMin = 600
-            estimateMax = 1500
-          } else if (review.status === 'in_progress') {
-            estimateMin = 500
-            estimateMax = 1200
-          } else {
-            // assigned — not started
-            estimateMin = 0
-            estimateMax = 0
-          }
-
-          return {
-            reviewerId: review.reviewerId,
-            reviewerName,
-            reviewStatus: review.status,
-            estimateMin,
-            estimateMax,
-          }
-        }),
-      )
-
-      return estimates
-    },
-  ),
-})

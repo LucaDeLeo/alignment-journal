@@ -85,7 +85,7 @@ development_status:
   # Epic 6: Payment Tracking & Notifications
   epic-6: backlog
   6-1-reviewer-payment-calculation-and-display:done
-  6-2-editor-payment-summary-view: backlog
+  6-2-editor-payment-summary-view:done
   6-3-in-app-notification-previews: backlog
   epic-6-retrospective: optional
 

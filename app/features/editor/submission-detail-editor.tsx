@@ -17,6 +17,7 @@ import { TriageDisplay } from '../submissions/triage-display'
 import { ActionEditorSelector } from './action-editor-selector'
 import { AuditTimeline } from './audit-timeline'
 import { DecisionPanel } from './decision-panel'
+import { PaymentSummaryTable } from './payment-summary-table'
 import { ReviewProgressIndicator } from './review-progress-indicator'
 import { ReviewerMatchPanel } from './reviewer-match-panel'
 import { StatusTransitionChip } from './status-transition-chip'
@@ -211,6 +212,9 @@ export function EditorSubmissionDetail({
           </div>
         </section>
       )}
+
+      {/* Payment Summary — renders when reviews exist */}
+      <PaymentSummaryTable submissionId={submissionId} />
 
       {/* Decision Panel — only for DECISION_PENDING status */}
       {submission.status === 'DECISION_PENDING' && (

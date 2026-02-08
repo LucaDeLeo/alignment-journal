@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { useMutation, useQuery } from 'convex/react'
+import { useMutation } from 'convex/react'
 import {
   CheckCircleIcon,
-  DollarSignIcon,
   GavelIcon,
   RotateCcwIcon,
   XCircleIcon,
@@ -17,7 +16,6 @@ import type { Id } from '../../../convex/_generated/dataModel'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader } from '~/components/ui/card'
-import { Separator } from '~/components/ui/separator'
 import { Textarea } from '~/components/ui/textarea'
 
 type DecisionType = 'ACCEPTED' | 'REJECTED' | 'REVISION_REQUESTED'
@@ -81,9 +79,6 @@ export function DecisionPanel({
 }: DecisionPanelProps) {
   const makeDecision = useMutation(api.decisions.makeDecision)
   const undoDecision = useMutation(api.decisions.undoDecision)
-  const paymentEstimates = useQuery(api.decisions.getPaymentEstimates, {
-    submissionId,
-  })
 
   const [activeDecision, setActiveDecision] = useState<DecisionType | null>(
     null,
@@ -256,50 +251,6 @@ export function DecisionPanel({
             </div>
           )}
 
-          {/* Payment estimates */}
-          {paymentEstimates != null && paymentEstimates.length > 0 && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5">
-                  <DollarSignIcon className="size-3.5 text-muted-foreground" />
-                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Payment Estimates
-                  </h3>
-                </div>
-                <div className="space-y-1.5">
-                  {paymentEstimates.map((estimate) => (
-                    <div
-                      key={estimate.reviewerId}
-                      className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {estimate.reviewerName}
-                        </span>
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {estimate.reviewStatus === 'in_progress'
-                            ? 'In Progress'
-                            : estimate.reviewStatus === 'submitted' ||
-                                estimate.reviewStatus === 'locked'
-                              ? 'Submitted'
-                              : 'Not Started'}
-                        </Badge>
-                      </div>
-                      <span className="text-muted-foreground">
-                        {estimate.estimateMin === 0 && estimate.estimateMax === 0
-                          ? '$0'
-                          : `$${estimate.estimateMin.toLocaleString()} – $${estimate.estimateMax.toLocaleString()}`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Estimated ranges. Detailed breakdown available in the payment section.
-                </p>
-              </div>
-            </>
-          )}
         </CardContent>
       </Card>
     </section>
