@@ -3,47 +3,10 @@ import { PenToolIcon, PlusIcon } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
 import { api } from '../../../convex/_generated/api'
-
-import type { SubmissionStatus } from '../../../convex/helpers/transitions'
+import { STATUS_COLORS, STATUS_LABELS, formatDate } from './status-utils'
 
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-
-const STATUS_COLORS: Record<SubmissionStatus, string> = {
-  DRAFT: 'bg-[var(--color-status-gray)] text-white',
-  SUBMITTED: 'bg-[var(--color-status-blue)] text-white',
-  TRIAGING: 'bg-[var(--color-status-amber)] text-white',
-  TRIAGE_COMPLETE: 'bg-[var(--color-status-green)] text-white',
-  DESK_REJECTED: 'bg-[var(--color-status-red)] text-white',
-  UNDER_REVIEW: 'bg-[var(--color-status-blue)] text-white',
-  DECISION_PENDING: 'bg-[var(--color-status-amber)] text-white',
-  ACCEPTED: 'bg-[var(--color-status-green)] text-white',
-  REJECTED: 'bg-[var(--color-status-red)] text-white',
-  REVISION_REQUESTED: 'bg-[var(--color-status-amber)] text-white',
-  PUBLISHED: 'bg-[var(--color-status-green)] text-white',
-}
-
-const STATUS_LABELS: Record<SubmissionStatus, string> = {
-  DRAFT: 'Draft',
-  SUBMITTED: 'Submitted',
-  TRIAGING: 'Triaging',
-  TRIAGE_COMPLETE: 'Triage Complete',
-  DESK_REJECTED: 'Desk Rejected',
-  UNDER_REVIEW: 'Under Review',
-  DECISION_PENDING: 'Decision Pending',
-  ACCEPTED: 'Accepted',
-  REJECTED: 'Rejected',
-  REVISION_REQUESTED: 'Revision Requested',
-  PUBLISHED: 'Published',
-}
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
 
 interface SubmissionListProps {
   onNewSubmission: () => void

@@ -4,12 +4,12 @@ completed: "2026-02-08"
 mode: yolo
 epic_filter: ""
 story_filter: ""
-current_story: 2-1-author-submission-form-and-pdf-upload
-current_session: session3-cycle1
+current_story: 2-2-submission-status-tracking
+current_session: session2
 status: running
-last_action: Epic 1 completed - all stories delivered, retrospective and traceability assessment done
+last_action: Story 2-1-author-submission-form-and-pdf-upload completed
 halt_reason: null
-stories_completed: 4
+stories_completed: 5
 stories_failed: 0
 ---
 
@@ -152,3 +152,15 @@ See: `_bmad-output/implementation-artifacts/tracking/TRACEABILITY-EPIC-1.md`
 - timestamp: 2026-02-08T09:13:19Z
 - git_ref: 76f95d3
 - session: session3-cycle1
+| 2-1-author-submission-form-and-pdf-upload | complete | 33m 51s | all | - |
+
+### 2-2-submission-status-tracking - session1 Checkpoint
+- timestamp: 2026-02-08T09:15:34Z
+- git_ref: 520a269
+- session: session1
+| 2-2-submission-status-tracking | 06:23 | passed | proceed | spec validation passed  |
+
+### 2-2-submission-status-tracking - session2 Checkpoint
+- timestamp: 2026-02-08T09:23:01Z
+- git_ref: 520a269
+- session: session2

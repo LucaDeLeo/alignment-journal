@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 
 import { mutation, query } from './_generated/server'
 import { withAuthor, withUser } from './helpers/auth'
+import { notFoundError, unauthorizedError } from './helpers/errors'
 import { submissionStatusValidator } from './helpers/transitions'
 
 import type { Doc, Id } from './_generated/dataModel'
@@ -123,4 +124,54 @@ export const listByAuthor = query({
       createdAt: s.createdAt,
     }))
   }),
+})
+
+/**
+ * Fetches a single submission by ID with author ownership enforcement.
+ * Uses withUser (not withAuthor) so admin users can also access the page.
+ */
+export const getById = query({
+  args: {
+    submissionId: v.id('submissions'),
+  },
+  returns: v.object({
+    _id: v.id('submissions'),
+    _creationTime: v.number(),
+    title: v.string(),
+    authors: v.array(v.object({ name: v.string(), affiliation: v.string() })),
+    abstract: v.string(),
+    keywords: v.array(v.string()),
+    status: submissionStatusValidator,
+    pdfFileName: v.optional(v.string()),
+    pdfFileSize: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+  handler: withUser(
+    async (
+      ctx: QueryCtx & { user: Doc<'users'> },
+      args: { submissionId: Id<'submissions'> },
+    ) => {
+      const submission = await ctx.db.get('submissions', args.submissionId)
+      if (!submission) {
+        throw notFoundError('Submission', args.submissionId)
+      }
+      if (submission.authorId !== ctx.user._id) {
+        throw unauthorizedError('You can only view your own submissions')
+      }
+      return {
+        _id: submission._id,
+        _creationTime: submission._creationTime,
+        title: submission.title,
+        authors: submission.authors,
+        abstract: submission.abstract,
+        keywords: submission.keywords,
+        status: submission.status,
+        pdfFileName: submission.pdfFileName,
+        pdfFileSize: submission.pdfFileSize,
+        createdAt: submission.createdAt,
+        updatedAt: submission.updatedAt,
+      }
+    },
+  ),
 })
