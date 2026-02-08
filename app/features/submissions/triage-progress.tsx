@@ -1,13 +1,6 @@
 import { CheckCircle2, Circle, Loader2, XCircle } from 'lucide-react'
 
-const PASS_DISPLAY_NAMES: Record<string, string> = {
-  scope: 'Scope Fit',
-  formatting: 'Formatting',
-  citations: 'Citations',
-  claims: 'Claims Analysis',
-}
-
-const PASS_ORDER = ['scope', 'formatting', 'citations', 'claims'] as const
+import { PASS_DISPLAY_NAMES, PASS_ORDER } from './triage-constants'
 
 interface TriageReport {
   passName: string

@@ -206,9 +206,13 @@ Users can create accounts, log in, and access role-appropriate views. The applic
 **Completed:** 2026-02-08 | **Duration:** ~160 minutes | **Stories:** 4/4 | **Tests:** 29 passing | **Commits:** 10
 **Blocking for Epic 2:** Auth/RBAC test coverage (TD-010) must be resolved before feature work begins.
 
-### Epic 2: Author Submission & LLM Triage Pipeline
+### Epic 2: Author Submission & LLM Triage Pipeline -- COMPLETE
 Authors can submit papers (metadata + PDF upload), receive real-time LLM triage feedback within minutes, and track their submission status through the editorial pipeline.
 **FRs covered:** FR5, FR6, FR7, FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15
+**Status:** COMPLETE (implementation) | Quality gate: FAIL (8% AC coverage, 0% P0)
+**Completed:** 2026-02-08 | **Duration:** ~116 minutes | **Stories:** 4/4 | **Tests:** 52 passing | **Commits:** 8
+**Sprint Mode:** YOLO | **Velocity:** 2.1 stories/hour (28% faster than Epic 1)
+**Blocking for Epic 3:** TD-010 (auth tests, carried from Epic 1), TD-013 (triage safety tests), TD-014 (submission auth tests)
 
 ### Epic 3: Editor Dashboard & Reviewer Assignment
 Editors can view all submissions in a pipeline dashboard, consume triage reports, assign action editors, get intelligent reviewer match suggestions with explainable rationale, invite reviewers, monitor progress, make decisions, and view audit trails and payment calculations.
@@ -339,9 +343,13 @@ So that I can navigate the platform with a consistent, professional experience.
 
 ---
 
-## Epic 2: Author Submission & LLM Triage Pipeline
+## Epic 2: Author Submission & LLM Triage Pipeline -- COMPLETE
+
+<!-- Updated from Epic 2 retrospective -->
 
 Authors can submit papers (metadata + PDF upload), receive real-time LLM triage feedback within minutes, and track their submission status through the editorial pipeline.
+
+> **Completion:** 2026-02-08 | All 4 stories delivered in ~116 minutes (YOLO mode). 52 tests passing (100%). Quality gate FAIL due to 0% P0 AC coverage (5 P0 criteria untested: idempotent writes, retry logic, sanitization, auth enforcement, ownership checks). 2 tech debt items resolved (TD-011 component infra, TD-012 coverage reporting), 1 deferred (TD-010 auth tests), 4 new items identified (TD-013 through TD-016). Feature folder pattern (`app/features/submissions/`) validated with 11 co-located components. Chained action pipeline architecture (scheduler-based, 4-pass triage with idempotent writes and bounded backoff) established as reusable pattern. See `RETRO-EPIC-2.md` and `TRACE-MATRIX-EPIC-2.md` for full analysis.
 
 ### Story 2.1: Author Submission Form and PDF Upload
 

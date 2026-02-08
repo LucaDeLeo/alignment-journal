@@ -16,6 +16,16 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Source code in `app/` (configured via `srcDirectory: 'app'` in vite.config.ts)
 - Convex functions in `convex/`
 - Path alias: `~/` maps to `app/`
+- Feature modules in `app/features/{domain}/` with barrel exports (`index.ts`)
+
+### Feature Folder Pattern
+<!-- Updated from Epic 2 retrospective -->
+- Co-locate related components, utilities, and constants in `app/features/{domain}/`
+- Each feature folder has an `index.ts` barrel export for clean imports from route files
+- Naming: `feature-verb.tsx` (e.g., `submission-form.tsx`, `triage-report-card.tsx`)
+- Shared utilities within a feature: `{domain}-constants.ts`, `status-utils.ts`
+- Established folders: `app/features/submissions/` (11 files), `app/features/auth/`
+- Future epics should follow: `app/features/editor/`, `app/features/review/`, etc.
 
 ### Config Files
 - `vite.config.ts` - Vite + TanStack Start + Tailwind + React Compiler
@@ -66,6 +76,15 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - `app/components/error-boundary.tsx` - class-based, wraps each route group's Outlet
 - Default fallback with "Try again" button; accepts optional custom fallback prop
 
+### Vitest Projects Config
+<!-- Updated from Epic 2 retrospective -->
+- Two test projects defined in `vitest.config.ts`:
+  - `unit`: runs `app/**/*.test.ts` and `convex/__tests__/**/*.test.ts` under Node environment
+  - `component`: runs `app/**/*.test.tsx` under happy-dom environment
+- Coverage: `@vitest/coverage-v8` configured with v8 provider
+  - Includes: `app/**/*.{ts,tsx}`, `convex/**/*.ts`
+  - Excludes: `app/routeTree.gen.ts`, `convex/_generated/**`, test files, type declarations
+
 ### Fonts
 - Satoshi (sans): self-hosted woff2 in `public/fonts/satoshi/`
 - JetBrains Mono (mono): self-hosted woff2 in `public/fonts/jetbrains-mono/`
@@ -77,4 +96,5 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - `bun run typecheck` - TypeScript check
 - `bun run lint` - ESLint
 - `bun run test` - Vitest
+- `bun run test -- --coverage` - Vitest with v8 coverage report
 - `bun run format` - Prettier

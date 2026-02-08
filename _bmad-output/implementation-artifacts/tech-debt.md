@@ -88,21 +88,60 @@
 - **Priority:** P0 -- Must resolve before Epic 2 feature work
 - **Status:** Open. Identified 2026-02-08 during Epic 1 retrospective. Quality gate FAIL is driven by this gap.
 
-## TD-011: No component test infrastructure
+## TD-011: No component test infrastructure [RESOLVED]
 - **Story:** Epic 1 retrospective (spans 1-3-AC4, 1-3-AC5, 1-4-AC5)
 - **Location:** `vitest.config.ts`
 - **Severity:** P1
 - **Description:** There is no component test renderer configured (jsdom or happy-dom). Component-level tests cannot be written for `RoleBadge`, `RoleSwitcher`, `ErrorBoundary`, or `CommandPalette` without first setting up the infrastructure.
 - **Impact:** Frontend components have no automated verification. Error boundary behavior, environment-conditional rendering (role switcher), and auth UI components are untested.
-- **Fix:** Install `happy-dom` (or `jsdom`) and configure Vitest's `environment` option for component test files. Use a convention like `*.component.test.ts` or a separate test directory.
-- **Priority:** P1 -- Address during Epic 2
-- **Status:** Open. Identified 2026-02-08 during Epic 1 retrospective.
+- **Resolution:** Installed `happy-dom` and configured Vitest with `projects` to run `app/**/*.test.tsx` files under `happy-dom` environment and all other tests under `node`. Component tests can now be authored.
+- **Resolved:** 2026-02-08 (Epic 2 completion)
 
-## TD-012: No code coverage reporting configured
+## TD-012: No code coverage reporting configured [RESOLVED]
 - **Story:** Epic 1 retrospective
 - **Location:** `vitest.config.ts`
 - **Severity:** P2
 - **Description:** Vitest coverage plugin (`@vitest/coverage-v8`) is not installed. There is no visibility into line, branch, or function coverage. This makes it harder to identify untested code paths and set coverage gates.
-- **Fix:** Install `@vitest/coverage-v8` and configure minimum thresholds in `vitest.config.ts`.
-- **Priority:** P2
-- **Status:** Open. Identified 2026-02-08 during Epic 1 retrospective.
+- **Resolution:** Installed `@vitest/coverage-v8@3.2.4` and configured coverage provider in `vitest.config.ts` with source includes/excludes. Run `bun run test -- --coverage` to generate reports.
+- **Resolved:** 2026-02-08 (Epic 2 completion)
+
+<!-- Added from Epic 2 retrospective -->
+
+## TD-013: Zero P0 test coverage for triage safety mechanisms
+- **Story:** Epic 2 retrospective (spans 2-3:AC4, 2-3:AC5, 2-3:AC7)
+- **Location:** `convex/triage.ts`
+- **Severity:** P0
+- **Description:** The triage pipeline's three critical safety mechanisms have zero automated test coverage: (1) `writeResult` mutation's idempotency guard (idempotencyKey index lookup, no-op when status is "complete"), (2) bounded exponential backoff retry logic (attempt counting, delay calculation `1000 * Math.pow(2, attempt - 1)`, terminal failure at attempt 3 via `markFailed`), and (3) external API response sanitization (`sanitizeResult`, `truncateLlmField` with MAX_LLM_FIELD_LENGTH=5000, sanitized `lastError` strings).
+- **Impact:** Data integrity risk (duplicate triage writes), reliability risk (uncontrolled retries), and security risk (raw API errors or stack traces leaking to clients).
+- **Fix:** Extract `sanitizeResult`, `truncateLlmField`, and the backoff delay formula as pure functions if not already. Write unit tests for: writeResult idempotency (duplicate calls with same key no-op), markFailed terminal state guard, sanitizeResult/truncateLlmField output, and backoff delay calculation. Integration tests for writeResult mutation with mocked Convex context.
+- **Priority:** P0 -- Must resolve before Epic 3 feature work
+- **Status:** Open. Identified 2026-02-08 during Epic 2 retrospective. Quality gate FAIL is driven by this gap.
+
+## TD-014: Zero integration tests for submission mutations/queries
+- **Story:** Epic 2 retrospective (spans 2-1:AC5, 2-2:AC1)
+- **Location:** `convex/submissions.ts`, `convex/storage.ts`
+- **Severity:** P0
+- **Description:** The submission backend functions (`submissions.create`, `submissions.getById`, `submissions.listByAuthor`, `storage.generateUploadUrl`) have zero integration tests. Auth enforcement via `withAuthor`/`withUser` wrappers, ownership checks in `getById`, and server-side Convex validators are all unverified. The `getById` ownership check is the data access boundary preventing cross-user submission leaks.
+- **Impact:** Auth bypass risk (withAuthor enforcement unverified), data leak risk (ownership check in getById unverified).
+- **Fix:** Write integration tests with mocked Convex context (`QueryCtx`, `MutationCtx`) and mocked Clerk identity. Test: create mutation auth enforcement, getById ownership check (NOT_FOUND/UNAUTHORIZED errors), listByAuthor index usage and projection, generateUploadUrl auth check.
+- **Priority:** P0 -- Must resolve before Epic 3 feature work
+- **Status:** Open. Identified 2026-02-08 during Epic 2 retrospective.
+
+## TD-015: Zero component tests despite infrastructure being ready
+- **Story:** Epic 2 retrospective (spans all Epic 2 frontend components)
+- **Location:** `app/features/submissions/` (11 components)
+- **Severity:** P1
+- **Description:** The component test infrastructure was set up during the Epic 2 debt-fix pass (TD-011: happy-dom + Vitest projects config), but zero component tests were written across all 4 stories. There are 11 frontend components in `app/features/submissions/` with no component-level verification. This is a tooling-without-adoption pattern.
+- **Impact:** Frontend components have no automated verification. Form validation behavior, conditional rendering, and error states are untested.
+- **Fix:** Write at least one proof-of-concept component test (recommended: `TriageReportCard` or `StatusTimeline` -- relatively simple with deterministic rendering) to establish the import pattern, mock setup, and assertion style for future component tests.
+- **Priority:** P1 -- Address during Epic 3 debt-fix pass
+- **Status:** Open. Identified 2026-02-08 during Epic 2 retrospective.
+
+## TD-016: startTriage and startTriageInternal share duplicated logic
+- **Story:** 2-3-pdf-text-extraction-and-triage-orchestration
+- **Location:** `convex/triage.ts`
+- **Severity:** P2
+- **Description:** The `startTriage` (public mutation) and `startTriageInternal` (internal mutation) functions share duplicated triage initialization logic (creating 4 pending triageReport records, transitioning submission status to TRIAGING, scheduling the first triage action). Changes to initialization logic must be made in two places.
+- **Fix:** Extract shared triage initialization into a helper function called by both `startTriage` and `startTriageInternal`.
+- **Priority:** P2 -- Address when convenient
+- **Status:** Open. Identified 2026-02-08 during Epic 2 retrospective.

@@ -145,42 +145,31 @@ function sanitizeResult(result: {
   }
 }
 
+/** Roles that have cross-author access to triage data. */
+const TRIAGE_PRIVILEGED_ROLES: ReadonlyArray<string> = [
+  'editor_in_chief',
+  'action_editor',
+  'admin',
+]
+
 /**
  * Object-level authorization for triage data access.
- * Allows:
- *  - The submission author
- *  - editor_in_chief, action_editor, or admin roles
+ * Allows the submission author or users with a privileged role.
+ *
+ * Works with both QueryCtx and MutationCtx (both extend QueryCtx).
+ * Returns the submission document so callers that need it can avoid
+ * a redundant `db.get`.
  */
-async function assertTriageAccess(
-  ctx: QueryCtx & { user: Doc<'users'> },
-  submissionId: Id<'submissions'>,
-): Promise<void> {
-  const submission = await ctx.db.get('submissions', submissionId)
-  if (!submission) throw notFoundError('Submission', submissionId)
-
-  const privilegedRoles = ['editor_in_chief', 'action_editor', 'admin']
-  if (
-    submission.authorId !== ctx.user._id &&
-    !privilegedRoles.includes(ctx.user.role)
-  ) {
-    throw unauthorizedError('Not authorized to access this submission')
-  }
-}
-
-/**
- * Same check for mutation contexts.
- */
-async function assertTriageAccessMut(
-  ctx: MutationCtx & { user: Doc<'users'> },
+async function assertTriageAccess<TCtx extends QueryCtx>(
+  ctx: TCtx & { user: Doc<'users'> },
   submissionId: Id<'submissions'>,
 ): Promise<Doc<'submissions'>> {
   const submission = await ctx.db.get('submissions', submissionId)
   if (!submission) throw notFoundError('Submission', submissionId)
 
-  const privilegedRoles = ['editor_in_chief', 'action_editor', 'admin']
   if (
     submission.authorId !== ctx.user._id &&
-    !privilegedRoles.includes(ctx.user.role)
+    !TRIAGE_PRIVILEGED_ROLES.includes(ctx.user.role)
   ) {
     throw unauthorizedError('Not authorized to access this submission')
   }
@@ -214,10 +203,10 @@ export const startTriageInternal = internalMutation({
   args: { submissionId: v.id('submissions') },
   returns: v.string(),
   handler: async (ctx, args) => {
-    const submission = await ctx.db.get("submissions", args.submissionId)
+    const submission = await ctx.db.get('submissions', args.submissionId)
     if (!submission) throw notFoundError('Submission', args.submissionId)
     assertTransition(submission.status, 'TRIAGING')
-    await ctx.db.patch("submissions", args.submissionId, {
+    await ctx.db.patch('submissions', args.submissionId, {
       status: 'TRIAGING',
       updatedAt: Date.now(),
     })
@@ -264,10 +253,10 @@ export const startTriage = mutation({
       args: { submissionId: Id<'submissions'> },
     ) => {
       // Object-level authorization: author or privileged role
-      const submission = await assertTriageAccessMut(ctx, args.submissionId)
+      const submission = await assertTriageAccess(ctx, args.submissionId)
 
       assertTransition(submission.status, 'TRIAGING')
-      await ctx.db.patch("submissions", args.submissionId, {
+      await ctx.db.patch('submissions', args.submissionId, {
         status: 'TRIAGING',
         updatedAt: Date.now(),
       })
@@ -322,7 +311,7 @@ export const writeResult = internalMutation({
       .unique()
     if (!report) return false
     if (report.status === 'complete') return false
-    await ctx.db.patch("triageReports", report._id, {
+    await ctx.db.patch('triageReports', report._id, {
       status: 'complete',
       result: args.result,
       completedAt: args.completedAt,
@@ -344,7 +333,7 @@ export const markRunning = internalMutation({
     if (!report) return null
     // Guard: never overwrite a terminal state
     if (report.status === 'complete' || report.status === 'failed') return null
-    await ctx.db.patch("triageReports", report._id, {
+    await ctx.db.patch('triageReports', report._id, {
       status: 'running',
       attemptCount: args.attemptCount,
     })
@@ -369,7 +358,7 @@ export const markFailed = internalMutation({
     if (!report) return null
     // Guard: never overwrite a completed report
     if (report.status === 'complete') return null
-    await ctx.db.patch("triageReports", report._id, {
+    await ctx.db.patch('triageReports', report._id, {
       status: 'failed',
       lastError: args.lastError,
       attemptCount: args.attemptCount,
@@ -398,12 +387,12 @@ export const completeTriageRun = internalMutation({
 
     const allComplete = runReports.every((r) => r.status === 'complete')
     if (allComplete) {
-      const submission = await ctx.db.get("submissions", args.submissionId)
+      const submission = await ctx.db.get('submissions', args.submissionId)
       if (submission) {
         // Idempotent: if already TRIAGE_COMPLETE, skip transition
         if (submission.status === 'TRIAGE_COMPLETE') return null
         assertTransition(submission.status, 'TRIAGE_COMPLETE')
-        await ctx.db.patch("submissions", args.submissionId, {
+        await ctx.db.patch('submissions', args.submissionId, {
           status: 'TRIAGE_COMPLETE',
           updatedAt: Date.now(),
         })

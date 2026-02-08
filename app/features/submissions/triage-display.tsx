@@ -1,18 +1,12 @@
 import { useQuery } from 'convex/react'
 
 import { api } from '../../../convex/_generated/api'
+import { PASS_DISPLAY_NAMES } from './triage-constants'
 import { TriageProgressIndicator } from './triage-progress'
 import { TriageReportCard } from './triage-report-card'
 
 import type { Id } from '../../../convex/_generated/dataModel'
 import type { SubmissionStatus } from '../../../convex/helpers/transitions'
-
-const PASS_DISPLAY_NAMES: Record<string, string> = {
-  scope: 'Scope Fit',
-  formatting: 'Formatting',
-  citations: 'Citations',
-  claims: 'Claims Analysis',
-}
 
 interface TriageDisplayProps {
   submissionId: Id<'submissions'>
