@@ -1503,7 +1503,7 @@ export const cleanupPartialSeed = internalMutation({
 
     // Delete seed users
     for (const user of seedUsers) {
-      await ctx.db.delete(user._id)
+      await ctx.db.delete('users', user._id)
     }
 
     // Delete submissions by seed authors
@@ -1513,38 +1513,48 @@ export const cleanupPartialSeed = internalMutation({
     )
     const seedSubmissionIds = new Set(seedSubmissions.map((s) => s._id))
     for (const sub of seedSubmissions) {
-      await ctx.db.delete(sub._id)
+      await ctx.db.delete('submissions', sub._id)
     }
 
-    // Delete records referencing seed submissions
-    const tables = [
-      'triageReports',
-      'reviews',
-      'reviewerAbstracts',
-      'discussions',
-      'auditLogs',
-      'notifications',
-      'payments',
-      'reviewInvites',
-      'matchResults',
-    ] as const
-    for (const table of tables) {
+    // Delete records referencing seed submissions (explicit table names for lint compliance)
+    async function deleteBySubmissionId<
+      T extends
+        | 'triageReports'
+        | 'reviews'
+        | 'reviewerAbstracts'
+        | 'discussions'
+        | 'auditLogs'
+        | 'notifications'
+        | 'payments'
+        | 'reviewInvites'
+        | 'matchResults',
+    >(table: T) {
       const records = await ctx.db.query(table).collect()
       for (const record of records) {
         if (
           'submissionId' in record &&
           seedSubmissionIds.has(record.submissionId as Id<'submissions'>)
         ) {
-          await ctx.db.delete(record._id)
+          await ctx.db.delete(table, record._id)
         }
       }
     }
+
+    await deleteBySubmissionId('triageReports')
+    await deleteBySubmissionId('reviews')
+    await deleteBySubmissionId('reviewerAbstracts')
+    await deleteBySubmissionId('discussions')
+    await deleteBySubmissionId('auditLogs')
+    await deleteBySubmissionId('notifications')
+    await deleteBySubmissionId('payments')
+    await deleteBySubmissionId('reviewInvites')
+    await deleteBySubmissionId('matchResults')
 
     // Delete reviewer profiles for seed users
     const profiles = await ctx.db.query('reviewerProfiles').collect()
     for (const profile of profiles) {
       if (seedUserIds.has(profile.userId)) {
-        await ctx.db.delete(profile._id)
+        await ctx.db.delete('reviewerProfiles', profile._id)
       }
     }
 

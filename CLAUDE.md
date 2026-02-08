@@ -77,6 +77,8 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 <!-- Updated from Epic 6 retrospective -->
 - `convex/helpers/roles.ts` - Shared role constants (`EDITOR_ROLES`, `WRITE_ROLES`) and `hasEditorRole()` type-safe helper, used by 7+ Convex files
 - Frontend re-exports shared Convex constants via feature barrel files (e.g., `app/features/editor/editor-constants.ts`)
+<!-- Updated from Epic 7 retrospective -->
+- `convex/seed.ts` - Seed data module: `seedData` internalAction (run via `npx convex run seed:seedData`), `build*()` pure functions for data definitions, typed batch `seed*` internalMutations, three-state idempotency check
 
 ### Auth Wrappers (Convex RBAC)
 - `convex/helpers/auth.ts` - HOF wrappers: `withUser`, `withRole`, `withAuthor`, `withEditor`, `withAdmin`, `withReviewer`, `withActionEditor`
@@ -111,6 +113,17 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Review auto-lock: `ctx.scheduler.runAfter(15 * 60 * 1000, internal.reviews.lockReview, ...)` -- idempotent, only from `submitted`
 - Edit windows (discussion): server-side `editableUntil` check, no scheduler needed
 
+### Seed Data Module
+<!-- Added from Epic 7 retrospective -->
+- `convex/seed.ts` (2,181 lines) - All seed infrastructure in a single file, internal-only (no client access)
+- Run via `npx convex run seed:seedData` -- uses `internalAction`, not public `action`
+- Architecture: `build*()` pure functions (data definitions) + `seed*` internalMutations (typed batch inserts, one per table) + `seedData` internalAction (orchestrator)
+- Idempotency: three-state check (`'complete' | 'partial' | 'none'`) with `cleanupPartialSeed` for interrupted runs
+- Dependency ordering: users first, then submissions (need authorIds), then dependent records
+- All synthetic clerkIds use `seed_` prefix to distinguish from real Clerk users
+- Embedding generation reuses production pipeline (`internal.matchingActions.generateEmbedding`) via deferred scheduling
+- Two-phase insertion for self-referencing data (e.g., discussion replies): insert parents first, use returned IDs as `parentId` for children
+
 ### Error Boundaries
 - `app/components/error-boundary.tsx` - class-based, wraps each route group's Outlet
 - Default fallback with "Try again" button; accepts optional custom fallback prop
@@ -125,11 +138,12 @@ Peer-reviewed journal platform for theoretical AI alignment research.
   - Excludes: `app/routeTree.gen.ts`, `convex/_generated/**`, test files, type declarations
 
 ### Pure Function Testing Pattern
-<!-- Added from Epic 6 retrospective -->
+<!-- Updated from Epic 7 retrospective -->
 - For Convex functions with complex business logic (calculations, validation rules, state checks), extract the logic into a pure function that takes a plain TypeScript interface as input
 - Test the pure function directly without mocking Convex database context
 - The Convex handler becomes a thin adapter: collect input from database, call pure function, return result
 - Example: `computePaymentBreakdown` in `convex/payments.ts` -- single source of truth for both reviewer-facing and editor-facing payment calculations, tested by 23 unit tests in `convex/__tests__/payments.test.ts`
+- Example: `buildSeedUsers` and `buildReviewerProfiles` in `convex/seed.ts` -- pure data definition functions exported for testing, covered by 15 unit tests in `convex/__tests__/seed-reviewers.test.ts`
 
 ### Shared Utilities (`app/lib/`)
 <!-- Added from Epic 6 retrospective -->
