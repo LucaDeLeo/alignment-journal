@@ -2,6 +2,7 @@ import { useQuery } from 'convex/react'
 import {
   ArrowLeft,
   CalendarIcon,
+  ClipboardListIcon,
   DownloadIcon,
   FileTextIcon,
   TagIcon,
@@ -15,6 +16,7 @@ import { StatusTimeline } from '../submissions/status-timeline'
 import { TriageDisplay } from '../submissions/triage-display'
 import { ActionEditorSelector } from './action-editor-selector'
 import { AuditTimeline } from './audit-timeline'
+import { ReviewProgressIndicator } from './review-progress-indicator'
 import { ReviewerMatchPanel } from './reviewer-match-panel'
 import { StatusTransitionChip } from './status-transition-chip'
 
@@ -40,6 +42,9 @@ export function EditorSubmissionDetail({
     submissionId,
   })
   const currentUser = useQuery(api.users.me, {})
+  const reviewProgress = useQuery(api.invitations.getReviewProgress, {
+    submissionId,
+  })
 
   if (submission === undefined) {
     return null
@@ -170,6 +175,39 @@ export function EditorSubmissionDetail({
       {(submission.status === 'TRIAGE_COMPLETE' ||
         submission.status === 'UNDER_REVIEW') && (
         <ReviewerMatchPanel submissionId={submissionId} />
+      )}
+
+      {/* Review Progress — only when reviews exist */}
+      {reviewProgress != null && reviewProgress.length > 0 && (
+        <section className="mt-8">
+          <h2 className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            <ClipboardListIcon className="size-3.5" />
+            Review Progress
+          </h2>
+          <div className="mt-3 space-y-2">
+            {reviewProgress.map((entry) => (
+              <div
+                key={entry.reviewerId}
+                className="flex items-center justify-between rounded-md border px-3 py-2"
+              >
+                <div className="flex items-center gap-3">
+                  <ReviewProgressIndicator
+                    indicator={entry.indicator}
+                    label={entry.indicatorLabel}
+                  />
+                  <span className="text-sm font-medium">
+                    {entry.reviewerName}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {entry.daysSinceAssignment === 0
+                      ? 'today'
+                      : `${entry.daysSinceAssignment}d ago`}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Pipeline Progress */}

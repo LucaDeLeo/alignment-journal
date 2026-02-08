@@ -3,6 +3,7 @@ import { useAction, useQuery } from 'convex/react'
 import { RefreshCwIcon, SearchIcon, SparklesIcon } from 'lucide-react'
 
 import { api } from '../../../convex/_generated/api'
+import { InvitationPanel } from './invitation-panel'
 import { ReviewerMatchCard } from './reviewer-match-card'
 
 import type { Id } from '../../../convex/_generated/dataModel'
@@ -98,6 +99,22 @@ export function ReviewerMatchPanel({
 
   const selectedCount = selectedIds.size
 
+  // Build selected reviewer data for InvitationPanel
+  const selectedReviewers = hasResults
+    ? matchResults.matches
+        .filter((m) => selectedIds.has(m.profileId))
+        .map((m) => ({
+          userId: m.userId,
+          reviewerName: m.reviewerName,
+          affiliation: m.affiliation,
+          rationale: m.rationale,
+        }))
+    : []
+
+  const handleInvitationsSent = () => {
+    setSelectedIds(new Set())
+  }
+
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between">
@@ -182,6 +199,13 @@ export function ReviewerMatchPanel({
               onDismiss={() => handleDismiss(match.profileId)}
             />
           ))}
+
+          {/* Invitation panel */}
+          <InvitationPanel
+            submissionId={submissionId}
+            selectedReviewers={selectedReviewers}
+            onInvitationsSent={handleInvitationsSent}
+          />
         </div>
       )}
 
