@@ -213,7 +213,6 @@ export const undoDecision = mutation({
   args: {
     submissionId: v.id('submissions'),
     previousDecision: decisionValidator,
-    decidedAt: v.number(),
   },
   returns: v.null(),
   handler: withUser(
@@ -222,7 +221,6 @@ export const undoDecision = mutation({
       args: {
         submissionId: Id<'submissions'>
         previousDecision: 'ACCEPTED' | 'REJECTED' | 'REVISION_REQUESTED'
-        decidedAt: number
       },
     ) => {
       // Authorization: editor-level access
@@ -248,8 +246,8 @@ export const undoDecision = mutation({
         )
       }
 
-      // Validate time window (10 seconds)
-      const elapsed = Date.now() - args.decidedAt
+      // Validate time window (10 seconds) using server-side updatedAt
+      const elapsed = Date.now() - submission.updatedAt
       if (elapsed > 10_000) {
         throw validationError('Undo window has expired')
       }
@@ -316,8 +314,17 @@ export const getPaymentEstimates = query({
         )
         .collect()
 
+      // Deduplicate by reviewerId, keeping the most recent review per reviewer
+      const latestByReviewer = new Map<Id<'users'>, (typeof reviews)[number]>()
+      for (const review of reviews) {
+        const existing = latestByReviewer.get(review.reviewerId)
+        if (!existing || review.updatedAt > existing.updatedAt) {
+          latestByReviewer.set(review.reviewerId, review)
+        }
+      }
+
       const estimates = await Promise.all(
-        reviews.map(async (review) => {
+        Array.from(latestByReviewer.values()).map(async (review) => {
           const reviewer = await ctx.db.get('users', review.reviewerId)
           const reviewerName = reviewer?.name ?? 'Unknown'
 

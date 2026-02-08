@@ -100,7 +100,7 @@ export function DecisionPanel({
 
     setIsPending(true)
     try {
-      const result = await makeDecision({
+      await makeDecision({
         submissionId,
         decision: activeDecision,
         decisionNote: decisionNote.trim() || undefined,
@@ -119,7 +119,6 @@ export function DecisionPanel({
               await undoDecision({
                 submissionId,
                 previousDecision: activeDecision,
-                decidedAt: result.decidedAt,
               })
               toast.info('Decision undone.')
             } catch {

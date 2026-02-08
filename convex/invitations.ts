@@ -136,6 +136,9 @@ export const sendInvitations = mutation({
       const now = Date.now()
       const inviteIds: Array<Id<'reviewInvites'>> = []
 
+      // Deduplicate reviewerIds within this request
+      const uniqueReviewerIds = [...new Set(args.reviewerIds)]
+
       // Fetch existing invites once for duplicate checking
       const existingInvites = await ctx.db
         .query('reviewInvites')
@@ -144,16 +147,21 @@ export const sendInvitations = mutation({
         )
         .collect()
 
-      for (const reviewerId of args.reviewerIds) {
+      // Track reviewers we've already invited in this loop
+      const invitedInThisRequest = new Set<Id<'users'>>()
+
+      for (const reviewerId of uniqueReviewerIds) {
         // Check for existing non-revoked invite for this reviewer+submission
         const hasActiveInvite = existingInvites.some(
           (inv) =>
             inv.reviewerId === reviewerId && inv.revokedAt === undefined,
         )
 
-        if (hasActiveInvite) {
+        if (hasActiveInvite || invitedInThisRequest.has(reviewerId)) {
           continue // Skip duplicate invitation
         }
+
+        invitedInThisRequest.add(reviewerId)
 
         // Generate unique token
         const reviewAssignmentId = crypto.randomUUID()
