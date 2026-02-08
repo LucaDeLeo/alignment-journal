@@ -182,7 +182,7 @@
 
 /* Discussion message highlight fadeout */
 @keyframes fadeHighlight {
-  0% { background-color: oklch(var(--accent) / 0.1); }
+  0% { background-color: color-mix(in oklch, var(--color-accent) 15%, transparent); }
   100% { background-color: transparent; }
 }
 

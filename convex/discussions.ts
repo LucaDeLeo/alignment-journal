@@ -70,6 +70,7 @@ export const listBySubmission = query({
       // Determine viewer role
       let viewerRole: ViewerRole | null = null
       const isAuthor = ctx.user._id === submission.authorId
+      let review: Doc<'reviews'> | null = null
 
       if (isAuthor) {
         viewerRole = 'author'
@@ -81,7 +82,7 @@ export const listBySubmission = query({
         viewerRole = 'editor'
       } else {
         // Check if user has a review for this submission
-        const review = await ctx.db
+        review = await ctx.db
           .query('reviews')
           .withIndex('by_submissionId_reviewerId', (q) =>
             q
@@ -96,20 +97,12 @@ export const listBySubmission = query({
 
       if (!viewerRole) return null
 
-      // Determine canPost
+      // Determine canPost (reuse review from role check to avoid duplicate query)
       let canPost = false
       if (viewerRole === 'author' || viewerRole === 'editor') {
         canPost = true
       } else {
-        // viewerRole must be 'reviewer' — check review status
-        const review = await ctx.db
-          .query('reviews')
-          .withIndex('by_submissionId_reviewerId', (q) =>
-            q
-              .eq('submissionId', args.submissionId)
-              .eq('reviewerId', ctx.user._id),
-          )
-          .unique()
+        // viewerRole is 'reviewer' — reuse the review fetched above
         canPost =
           review?.status === 'submitted' || review?.status === 'locked'
       }

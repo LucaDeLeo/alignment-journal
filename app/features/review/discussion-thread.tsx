@@ -195,22 +195,25 @@ function DiscussionThreadInner({
   const topLevel: Array<DiscussionMessageData> = []
   const repliesByParent = new Map<string, Array<DiscussionMessageData>>()
 
+  const messageById = new Map(
+    data.messages.map((m: DiscussionMessageData) => [m._id, m]),
+  )
+
   for (const msg of data.messages) {
     if (!msg.parentId) {
       topLevel.push(msg)
     } else {
-      // Find the top-level ancestor (flatten deep nesting to 1 level)
-      let parentId = msg.parentId
-      const parentMsg = data.messages.find(
-        (m: DiscussionMessageData) => m._id === parentId,
-      )
-      if (parentMsg?.parentId) {
-        parentId = parentMsg.parentId
+      // Walk up the parent chain to find the top-level ancestor
+      let ancestorId = msg.parentId
+      let ancestor = messageById.get(ancestorId)
+      while (ancestor?.parentId) {
+        ancestorId = ancestor.parentId
+        ancestor = messageById.get(ancestorId)
       }
 
-      const existing = repliesByParent.get(parentId) ?? []
+      const existing = repliesByParent.get(ancestorId) ?? []
       existing.push(msg)
-      repliesByParent.set(parentId, existing)
+      repliesByParent.set(ancestorId, existing)
     }
   }
 
