@@ -17,9 +17,14 @@ import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 import { auth } from '@clerk/tanstack-react-start/server'
 import { ConvexProviderWithClerk } from 'convex/react-clerk'
+import { useMutation } from 'convex/react'
+
+import { api } from '../../convex/_generated/api'
+
 import type { ConvexQueryClient } from '@convex-dev/react-query'
 import type { ConvexReactClient } from 'convex/react'
 import type { QueryClient } from '@tanstack/react-query'
+import { RoleBadge, RoleSwitcher, useCurrentUser } from '~/features/auth'
 import appCss from '~/styles/globals.css?url'
 
 const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
@@ -97,6 +102,64 @@ function RootComponent() {
   )
 }
 
+/** Whether the role switcher UI should be visible. */
+const showRoleSwitcher =
+  import.meta.env.DEV || !!import.meta.env.VITE_SHOW_ROLE_SWITCHER
+
+/**
+ * Bootstraps the Convex user record and renders role-aware header content.
+ * Only rendered inside `<SignedIn>` so Clerk auth is guaranteed.
+ */
+function AuthenticatedHeader() {
+  const ensureUser = useMutation(api.users.ensureUser)
+  const [isBootstrapped, setIsBootstrapped] = React.useState(false)
+
+  React.useEffect(() => {
+    let cancelled = false
+    void ensureUser()
+      .then(() => {
+        if (!cancelled) {
+          setIsBootstrapped(true)
+        }
+      })
+      .catch(() => {
+        // Auth timing or network failure — retry once after a short delay
+        if (!cancelled) {
+          setTimeout(() => {
+            if (!cancelled) {
+              void ensureUser()
+                .then(() => {
+                  if (!cancelled) {
+                    setIsBootstrapped(true)
+                  }
+                })
+                .catch(() => {
+                  // Silently fail — user will need to refresh
+                })
+            }
+          }, 2000)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [ensureUser])
+
+  const user = useCurrentUser(isBootstrapped)
+
+  return (
+    <>
+      {user && (
+        <>
+          <RoleBadge role={user.role} />
+          {showRoleSwitcher && <RoleSwitcher currentRole={user.role} />}
+        </>
+      )}
+      <UserButton />
+    </>
+  )
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -111,7 +174,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             </span>
             <div className="flex items-center gap-4">
               <SignedIn>
-                <UserButton />
+                <AuthenticatedHeader />
               </SignedIn>
               <SignedOut>
                 <SignInButton mode="modal" />
