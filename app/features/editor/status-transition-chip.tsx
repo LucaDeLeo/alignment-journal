@@ -32,11 +32,13 @@ import {
 interface StatusTransitionChipProps {
   submissionId: Id<'submissions'>
   currentStatus: SubmissionStatus
+  isDecisionPanelActive?: boolean
 }
 
 export function StatusTransitionChip({
   submissionId,
   currentStatus,
+  isDecisionPanelActive,
 }: StatusTransitionChipProps) {
   const transitionStatus = useMutation(api.submissions.transitionStatus)
   const [isPending, setIsPending] = React.useState(false)
@@ -59,8 +61,8 @@ export function StatusTransitionChip({
     }
   }
 
-  // Terminal states — non-interactive badge
-  if (validTransitions.length === 0) {
+  // Terminal states or decision panel active — non-interactive badge
+  if (validTransitions.length === 0 || isDecisionPanelActive) {
     return (
       <Badge className={STATUS_COLORS[currentStatus]}>
         {STATUS_LABELS[currentStatus]}

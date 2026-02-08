@@ -1,5 +1,6 @@
 export { ActionEditorSelector } from './action-editor-selector'
 export { AuditTimeline } from './audit-timeline'
+export { DecisionPanel } from './decision-panel'
 export { EditorSidebar } from './editor-sidebar'
 export {
   EDITOR_ROLES,

@@ -9,6 +9,7 @@
  */
 
 import type * as audit from "../audit.js";
+import type * as decisions from "../decisions.js";
 import type * as invitations from "../invitations.js";
 import type * as matching from "../matching.js";
 import type * as storage from "../storage.js";
@@ -27,6 +28,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   audit: typeof audit;
+  decisions: typeof decisions;
   invitations: typeof invitations;
   matching: typeof matching;
   storage: typeof storage;

@@ -16,6 +16,7 @@ import { StatusTimeline } from '../submissions/status-timeline'
 import { TriageDisplay } from '../submissions/triage-display'
 import { ActionEditorSelector } from './action-editor-selector'
 import { AuditTimeline } from './audit-timeline'
+import { DecisionPanel } from './decision-panel'
 import { ReviewProgressIndicator } from './review-progress-indicator'
 import { ReviewerMatchPanel } from './reviewer-match-panel'
 import { StatusTransitionChip } from './status-transition-chip'
@@ -71,6 +72,7 @@ export function EditorSubmissionDetail({
         <StatusTransitionChip
           submissionId={submission._id}
           currentStatus={submission.status}
+          isDecisionPanelActive={submission.status === 'DECISION_PENDING'}
         />
       </div>
 
@@ -208,6 +210,14 @@ export function EditorSubmissionDetail({
             ))}
           </div>
         </section>
+      )}
+
+      {/* Decision Panel — only for DECISION_PENDING status */}
+      {submission.status === 'DECISION_PENDING' && (
+        <DecisionPanel
+          submissionId={submissionId}
+          submissionTitle={submission.title}
+        />
       )}
 
       {/* Pipeline Progress */}
