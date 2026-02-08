@@ -288,7 +288,7 @@ export const listForEditor = query({
                   overdue: reviews.filter(
                     (r) =>
                       r.status === 'in_progress' &&
-                      Date.now() - r.updatedAt > 28 * 24 * 60 * 60 * 1000,
+                      Date.now() - r.createdAt > 28 * 24 * 60 * 60 * 1000,
                   ).length,
                 }
               : null

@@ -145,3 +145,30 @@
 - **Fix:** Extract shared triage initialization into a helper function called by both `startTriage` and `startTriageInternal`.
 - **Priority:** P2 -- Address when convenient
 - **Status:** Open. Identified 2026-02-08 during Epic 2 retrospective.
+
+## TD-017: listForEditor pagination order mismatch with display sort
+- **Story:** 3-1-editor-pipeline-dashboard
+- **Location:** `convex/submissions.ts:252-267`
+- **Severity:** P2
+- **Description:** The `listForEditor` query paginates using the default `_creationTime` index order but then re-sorts each page by `updatedAt` descending for display. This means pagination boundaries are based on creation time while the user sees an `updatedAt` sort. Items recently updated but created long ago appear on later pages, and items can appear to "jump" between pages after status changes.
+- **Fix:** Add a `by_updatedAt` index (and a composite `by_status_updatedAt` index for filtered queries) to the `submissions` table schema and paginate on that index directly. This eliminates the per-page re-sort.
+- **Priority:** P2 -- Address when pagination UX becomes a user-reported issue
+- **Status:** Open. Identified 2026-02-08 during code review.
+
+## TD-018: Date.now() in Convex query makes overdue calculation non-deterministic
+- **Story:** 3-1-editor-pipeline-dashboard
+- **Location:** `convex/submissions.ts:288-292`
+- **Severity:** P2
+- **Description:** The `listForEditor` query uses `Date.now()` to compute the overdue flag for reviewer indicators. Convex queries should ideally be deterministic. The overdue flag won't update as time passes unless data changes trigger a reactive re-evaluation. Overdue badges can go stale for static submissions.
+- **Fix:** Move the overdue calculation client-side (pass `createdAt` from each review in the summary, compute overdue in the UI), or materialize a derived `isOverdue` field via scheduled mutations.
+- **Priority:** P2 -- Address when real-time overdue accuracy becomes important
+- **Status:** Open. Identified 2026-02-08 during code review.
+
+## TD-019: N+1 query pattern in listForEditor enrichment
+- **Story:** 3-1-editor-pipeline-dashboard
+- **Location:** `convex/submissions.ts:271-302`
+- **Severity:** P2
+- **Description:** For each submission in the paginated page (25 items), the query runs 2 additional sub-queries (reviews + triageReports), totaling 50 additional reads per page load. This is acceptable at prototype scale (<100 submissions) but will degrade as data grows.
+- **Fix:** Denormalize reviewer summary and triage severity onto the `submissions` table (updated by mutations that create/update reviews and triage reports), or create a separate summary table.
+- **Priority:** P2 -- Address before production scale
+- **Status:** Open. Identified 2026-02-08 during code review.

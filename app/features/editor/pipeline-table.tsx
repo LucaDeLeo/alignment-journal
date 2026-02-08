@@ -123,7 +123,7 @@ export function PipelineTable({
                 : 'When authors submit papers, they will appear here for triage and editorial processing.'
               : 'Try loading more results to find matches.'}
           </p>
-          {hasActiveFilters && showEmptyState && (
+          {hasActiveFilters && (
             <Button variant="outline" size="sm" onClick={onClearFilters}>
               Clear filters
             </Button>
