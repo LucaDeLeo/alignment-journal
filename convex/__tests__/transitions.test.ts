@@ -47,6 +47,7 @@ describe('VALID_TRANSITIONS', () => {
     expect([...VALID_TRANSITIONS.TRIAGE_COMPLETE]).toEqual([
       'DESK_REJECTED',
       'UNDER_REVIEW',
+      'TRIAGING',
     ])
     expect([...VALID_TRANSITIONS.UNDER_REVIEW]).toEqual(['DECISION_PENDING'])
     expect([...VALID_TRANSITIONS.DECISION_PENDING]).toEqual([

@@ -10,6 +10,7 @@
 
 import type * as storage from "../storage.js";
 import type * as submissions from "../submissions.js";
+import type * as triage from "../triage.js";
 import type * as users from "../users.js";
 import type * as helpers_auth from "../helpers/auth.js";
 import type * as helpers_errors from "../helpers/errors.js";
@@ -24,6 +25,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   storage: typeof storage;
   submissions: typeof submissions;
+  triage: typeof triage;
   users: typeof users;
   "helpers/auth": typeof helpers_auth;
   "helpers/errors": typeof helpers_errors;

@@ -1,6 +1,7 @@
 import { v } from 'convex/values'
 
 import { mutation, query } from './_generated/server'
+import { internal } from './_generated/api'
 import { withAuthor, withUser } from './helpers/auth'
 import { notFoundError, unauthorizedError } from './helpers/errors'
 import { submissionStatusValidator } from './helpers/transitions'
@@ -77,7 +78,7 @@ export const create = mutation({
       }
 
       const now = Date.now()
-      return await ctx.db.insert('submissions', {
+      const submissionId = await ctx.db.insert('submissions', {
         authorId: ctx.user._id,
         title: args.title,
         authors: args.authors,
@@ -90,6 +91,15 @@ export const create = mutation({
         createdAt: now,
         updatedAt: now,
       })
+
+      // Automatically trigger triage pipeline
+      await ctx.scheduler.runAfter(
+        0,
+        internal.triage.startTriageInternal,
+        { submissionId },
+      )
+
+      return submissionId
     },
   ),
 })

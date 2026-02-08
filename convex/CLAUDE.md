@@ -21,3 +21,12 @@
 
 ## db.get() Usage
 - Convex supports both `ctx.db.get(id)` and `ctx.db.get('tableName', id)` overloads
+
+## Chained Action Pattern (`triage.ts`)
+- `"use node";` must be first line for Node.js runtime (required by `unpdf`, `ai`, `@ai-sdk/anthropic`)
+- Chained internalActions: each action writes results via internalMutation, then schedules the next action via `ctx.scheduler.runAfter(0, ...)`
+- Retry: track `attemptCount` via action args (not DB), re-schedule self with exponential backoff (max 3 attempts)
+- Idempotency: use `idempotencyKey` index to prevent duplicate writes; `writeResult` no-ops if already `complete`
+- Terminal state guards: `markRunning` won't overwrite `complete`/`failed`; `markFailed` won't overwrite `complete`
+- Pipeline continues on failure: failed passes schedule the next pass with empty text so remaining passes still execute
+- Object-level auth on queries: `assertTriageAccess` checks author ownership or privileged role
