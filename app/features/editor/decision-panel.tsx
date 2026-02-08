@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner'
 
 import { api } from '../../../convex/_generated/api'
+import { DECISION_NOTE_MAX_LENGTH } from '../../../convex/decisions'
 
 import type { Id } from '../../../convex/_generated/dataModel'
 
@@ -20,8 +21,6 @@ import { Separator } from '~/components/ui/separator'
 import { Textarea } from '~/components/ui/textarea'
 
 type DecisionType = 'ACCEPTED' | 'REJECTED' | 'REVISION_REQUESTED'
-
-const DECISION_NOTE_MAX_LENGTH = 2000
 
 interface DecisionPanelProps {
   submissionId: Id<'submissions'>

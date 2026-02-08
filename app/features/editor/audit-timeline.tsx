@@ -15,7 +15,11 @@ const ACTION_LABELS: Record<string, string> = {
   action_editor_assigned: 'Assignment',
   action_editor_reassigned: 'Reassignment',
   reviewer_invited: 'Reviewer invited',
-  decision_made: 'Decision',
+  reviewer_invite_revoked: 'Invitation revoked',
+  decision_accepted: 'Accepted',
+  decision_rejected: 'Rejected',
+  decision_revision_requested: 'Revision requested',
+  decision_undone: 'Decision undone',
 }
 
 function formatActionLabel(action: string): string {

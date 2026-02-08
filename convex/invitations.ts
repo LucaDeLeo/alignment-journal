@@ -4,12 +4,10 @@ import { internal } from './_generated/api'
 import { mutation, query } from './_generated/server'
 import { withUser } from './helpers/auth'
 import { unauthorizedError, validationError } from './helpers/errors'
+import { EDITOR_ROLES } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
-
-// Roles allowed to manage invitations (editor-level access)
-const EDITOR_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
 
 // 24-hour invitation TTL in milliseconds
 const INVITE_TTL_MS = 24 * 60 * 60 * 1000

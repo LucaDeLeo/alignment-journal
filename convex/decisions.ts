@@ -8,14 +8,13 @@ import {
   unauthorizedError,
   validationError,
 } from './helpers/errors'
+import { EDITOR_ROLES } from './helpers/roles'
 import { assertTransition } from './helpers/transitions'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 
-const EDITOR_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
-
-const DECISION_NOTE_MAX_LENGTH = 2000
+export const DECISION_NOTE_MAX_LENGTH = 2000
 
 const decisionValidator = v.union(
   v.literal('ACCEPTED'),
@@ -55,20 +54,12 @@ function buildNotificationSubject(
   }
 }
 
-function decisionToNotificationType(
-  decision: 'ACCEPTED' | 'REJECTED' | 'REVISION_REQUESTED',
-): string {
-  switch (decision) {
-    case 'ACCEPTED':
-      return 'decision_accepted'
-    case 'REJECTED':
-      return 'decision_rejected'
-    case 'REVISION_REQUESTED':
-      return 'decision_revision_requested'
-  }
-}
-
-function decisionToAuditAction(
+/**
+ * Maps a decision type to a snake_case action string.
+ * Used for both notification types and audit log actions
+ * (they use the same mapping).
+ */
+function decisionToActionString(
   decision: 'ACCEPTED' | 'REJECTED' | 'REVISION_REQUESTED',
 ): string {
   switch (decision) {
@@ -165,7 +156,7 @@ export const makeDecision = mutation({
       })
 
       // Create author notification
-      const notificationType = decisionToNotificationType(args.decision)
+      const notificationType = decisionToActionString(args.decision)
       const subject = buildNotificationSubject(args.decision, submission.title)
       const body = buildNotificationBody(
         args.decision,
@@ -183,7 +174,7 @@ export const makeDecision = mutation({
       })
 
       // Log audit entry
-      const auditAction = decisionToAuditAction(args.decision)
+      const auditAction = decisionToActionString(args.decision)
       const noteSnippet = args.decisionNote
         ? args.decisionNote.slice(0, 100)
         : undefined

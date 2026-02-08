@@ -173,11 +173,82 @@
 - **Priority:** P2 -- Address before production scale
 - **Status:** Open. Identified 2026-02-08 during code review.
 
-## TD-020: EDITOR_ROLES constant duplicated across 4 Convex files
+## TD-020: EDITOR_ROLES constant duplicated across 7 files [RESOLVED]
 - **Story:** 3-4-reviewer-profile-management-and-embedding-generation
-- **Location:** `convex/matching.ts:25`, `convex/audit.ts:11`, `convex/users.ts:187`, `convex/submissions.ts:21`
-- **Severity:** P3
-- **Description:** The `EDITOR_ROLES` constant (`['editor_in_chief', 'action_editor', 'admin']`) is defined identically in 4 separate Convex files. Adding or removing an editor-level role requires updating all 4 files in sync.
-- **Fix:** Extract `EDITOR_ROLES` (and `WRITE_ROLES`) to `convex/helpers/roles.ts` and import in all consumer files.
-- **Priority:** P3 -- Low risk at current scale, address when convenient
-- **Status:** Open. Identified 2026-02-08 during code review.
+- **Location:** `convex/matching.ts`, `convex/audit.ts`, `convex/users.ts`, `convex/submissions.ts`, `convex/decisions.ts`, `convex/invitations.ts`, `app/features/editor/editor-constants.ts`
+- **Issue:** The `EDITOR_ROLES` constant (`['editor_in_chief', 'action_editor', 'admin']`) and `WRITE_ROLES` were defined identically across 7 files. Originally logged as 4 files (P3), but grew to 7 during Epic 3 stories 3-5 through 3-7.
+- **Resolution:** Extracted `EDITOR_ROLES` and `WRITE_ROLES` to `convex/helpers/roles.ts`. All 7 consumer files now import from the shared module. Frontend re-exports from `app/features/editor/editor-constants.ts`.
+- **Resolved:** 2026-02-08 (Epic 3 completion)
+
+## TD-021: decisionToNotificationType and decisionToAuditAction were identical functions [RESOLVED]
+- **Story:** 3-7-editorial-decisions
+- **Location:** `convex/decisions.ts:58-82`
+- **Issue:** Two separate functions (`decisionToNotificationType` and `decisionToAuditAction`) had identical switch-case logic mapping decision types to the same snake_case strings. Changes to the mapping would need to be made in two places.
+- **Resolution:** Consolidated into a single `decisionToActionString` function. Both notification type and audit action now use the same function.
+- **Resolved:** 2026-02-08 (Epic 3 completion)
+
+## TD-022: DECISION_NOTE_MAX_LENGTH duplicated between backend and frontend [RESOLVED]
+- **Story:** 3-7-editorial-decisions
+- **Location:** `convex/decisions.ts:18`, `app/features/editor/decision-panel.tsx:24`
+- **Issue:** The max length constant (2000) was defined independently in the backend validation and the frontend form. Changing the limit in one location without the other would create a silent mismatch (either the frontend allows text the backend rejects, or the frontend restricts shorter than the backend allows).
+- **Resolution:** Exported `DECISION_NOTE_MAX_LENGTH` from `convex/decisions.ts`. Frontend component now imports from the backend module.
+- **Resolved:** 2026-02-08 (Epic 3 completion)
+
+## TD-023: Audit timeline missing action labels for decision and invitation events [RESOLVED]
+- **Story:** 3-7-editorial-decisions, 3-6-reviewer-invitation-and-progress-monitoring
+- **Location:** `app/features/editor/audit-timeline.tsx:13-19`
+- **Issue:** The `ACTION_LABELS` mapping in the audit timeline component was missing labels for 5 action types added during Epic 3: `reviewer_invite_revoked`, `decision_accepted`, `decision_rejected`, `decision_revision_requested`, `decision_undone`. These actions would display as raw snake_case strings in the UI. Also included a stale `decision_made` entry that no backend code generates.
+- **Resolution:** Added all 5 missing action labels and removed the stale `decision_made` entry.
+- **Resolved:** 2026-02-08 (Epic 3 completion)
+
+<!-- Added from Epic 3 traceability assessment -->
+
+## TD-024: Zero tests for audit log creation and append-only invariant
+- **Story:** Epic 3 retrospective (spans 3-3:AC2, 3-3:AC5)
+- **Location:** `convex/audit.ts`
+- **Severity:** P0
+- **Description:** The audit trail (`logAction` internalMutation) has zero tests verifying that: (1) audit log entries are correctly created when scheduled from mutations like `assignActionEditor`, `transitionStatus`, `makeDecision`, and `sendInvitations`; and (2) the `auditLogs` table has no update or delete mutations, preserving the append-only invariant. The audit trail is the accountability mechanism for all editorial actions across the platform.
+- **Impact:** Data integrity risk -- audit trail completeness and immutability are unverified. A code change could silently add an update/delete mutation without detection.
+- **Fix:** Write structural test verifying `audit.ts` only exports `logAction` (internalMutation) and `listBySubmission` (query). Write unit test for `logAction` field correctness with mocked Convex context.
+- **Priority:** P0 -- Must resolve before Epic 4 feature work
+- **Status:** Open. Identified 2026-02-08 during Epic 3 traceability assessment.
+
+## TD-025: Zero tests for embedding generation pipeline
+- **Story:** Epic 3 retrospective (spans 3-4:AC3)
+- **Location:** `convex/matching.ts` (`generateEmbedding` internalAction, `saveEmbedding` internalMutation)
+- **Severity:** P0
+- **Description:** The reviewer profile embedding pipeline (`generateEmbedding` -> `saveEmbedding`) has zero tests. This includes: text construction from profile fields, OpenAI API call with correct model (`text-embedding-3-large`) and dimensions (1536), stale-check guard in `saveEmbedding` (prevents overwriting a newer embedding with an older one), and error handling. Reviewer matching (Story 3-5) depends on correct embeddings for vector search.
+- **Impact:** Core functionality risk -- incorrect embeddings would produce meaningless reviewer matches. The stale-check guard is a concurrency safety mechanism with no verification.
+- **Fix:** Write unit tests for the text construction and stale-check logic as pure functions. Integration test for the full pipeline requires mocked OpenAI API.
+- **Priority:** P0 -- Must resolve before Epic 4 feature work
+- **Status:** Open. Identified 2026-02-08 during Epic 3 traceability assessment.
+
+## TD-026: Zero tests for invitation token generation and hashing
+- **Story:** Epic 3 retrospective (spans 3-6:AC1)
+- **Location:** `convex/invitations.ts` (`sendInvitations` mutation)
+- **Severity:** P0
+- **Description:** The reviewer invitation flow uses `crypto.randomUUID()` for token generation and SHA-256 for hashing before storage. Zero tests verify: token uniqueness, hash correctness, duplicate invitation prevention, transactional creation of `reviewInvites` + `reviews` + `notifications` records, and the 24hr TTL calculation. This is a security-sensitive path -- token integrity is the authentication mechanism for reviewer onboarding in Epic 4.
+- **Impact:** Security risk -- token generation and hashing are unverified. Duplicate invitation bugs could create orphaned review records.
+- **Fix:** Write unit tests for token hashing (SHA-256 of UUID produces consistent hex string). Write tests for invitation status derivation logic (revoked > consumed > expired > pending). Integration test for `sendInvitations` with mocked Convex context.
+- **Priority:** P0 -- Must resolve before Epic 4 feature work
+- **Status:** Open. Identified 2026-02-08 during Epic 3 traceability assessment.
+
+## TD-027: Zero tests for undo decision time window validation
+- **Story:** Epic 3 retrospective (spans 3-7:AC4)
+- **Location:** `convex/decisions.ts` (`undoDecision` mutation)
+- **Severity:** P0
+- **Description:** The `undoDecision` mutation enforces a 10-second grace period for editorial decision reversal. Zero tests verify: time window validation (rejection after 10 seconds), status revert to `DECISION_PENDING` (bypasses normal transition map), `decisionNote` clearing, and audit trail logging of `decision_undone`. This is a data integrity mechanism -- incorrect undo behavior could leave submissions in inconsistent states.
+- **Impact:** Data integrity risk -- undo correctness is unverified. A time window miscalculation could allow indefinite decision reversal or block legitimate undos.
+- **Fix:** Write unit tests for the time window check (mock `Date.now()`). Write integration test for the full undo flow: make decision -> undo within window -> verify state revert.
+- **Priority:** P0 -- Must resolve before Epic 4 feature work
+- **Status:** Open. Identified 2026-02-08 during Epic 3 traceability assessment.
+
+## TD-028: Zero component tests for 14 Epic 3 editor components
+- **Story:** Epic 3 retrospective (spans all Epic 3 frontend)
+- **Location:** `app/features/editor/` (14 components), `app/features/admin/` (2 components)
+- **Severity:** P1
+- **Description:** Epic 3 added 14 components to `app/features/editor/` and 2 to `app/features/admin/` with zero component-level tests. The component test infrastructure (happy-dom + Vitest projects, TD-011) remains unused for the third consecutive epic. Combined with TD-015 (11 submission components from Epic 2), the project now has 27 frontend components across 3 feature folders with no component-level verification.
+- **Impact:** Frontend behavior is entirely unverified -- form validation, conditional rendering, error states, and interactive state management (e.g., `ReviewerMatchPanel` select/dismiss, `DecisionPanel` confirm/cancel) have no automated tests.
+- **Fix:** Write at least one proof-of-concept component test to establish the pattern. Recommended targets: `StatusTransitionChip` (small, deterministic, tests dropdown + AlertDialog behavior) or `DecisionPanel` (tests form validation and character counter).
+- **Priority:** P1 -- Address during Epic 4 debt-fix pass
+- **Status:** Open. Identified 2026-02-08 during Epic 3 traceability assessment.

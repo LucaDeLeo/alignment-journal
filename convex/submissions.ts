@@ -9,6 +9,7 @@ import {
   unauthorizedError,
   validationError,
 } from './helpers/errors'
+import { EDITOR_ROLES } from './helpers/roles'
 import {
   DECISION_ONLY_STATUSES,
   assertTransition,
@@ -18,8 +19,6 @@ import {
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import type { SubmissionStatus } from './helpers/transitions'
-
-const EDITOR_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
 
 /**
  * Creates a new submission with status SUBMITTED.

@@ -214,9 +214,13 @@ Authors can submit papers (metadata + PDF upload), receive real-time LLM triage 
 **Sprint Mode:** YOLO | **Velocity:** 2.1 stories/hour (28% faster than Epic 1)
 **Blocking for Epic 3:** TD-010 (auth tests, carried from Epic 1), TD-013 (triage safety tests), TD-014 (submission auth tests)
 
-### Epic 3: Editor Dashboard & Reviewer Assignment
+### Epic 3: Editor Dashboard & Reviewer Assignment -- COMPLETE
 Editors can view all submissions in a pipeline dashboard, consume triage reports, assign action editors, get intelligent reviewer match suggestions with explainable rationale, invite reviewers, monitor progress, make decisions, and view audit trails and payment calculations.
 **FRs covered:** FR16, FR17, FR18, FR19, FR20, FR21, FR22, FR23, FR24, FR25, FR26, FR27
+**Status:** COMPLETE (implementation) | Quality gate: FAIL (0% FULL AC coverage, 89% NONE)
+**Completed:** 2026-02-08 | **Duration:** ~208 minutes | **Stories:** 7/7 | **Tests:** 73 passing | **Commits:** 18
+**Sprint Mode:** YOLO | **Velocity:** 2.0 stories/hour (stable vs Epic 2)
+**Blocking for Epic 4:** TD-010 (auth tests, carried x3), TD-013 (triage tests, carried x2), TD-014 (submission tests, carried x2), TD-024-027 (Epic 3 P0 gaps: audit, embeddings, invitations, undo decision)
 
 ### Epic 4: Review Process & Semi-Confidential Discussion
 Reviewers can access assigned papers via invitation links with minimal onboarding, read papers inline, submit structured reviews, and participate in semi-confidential threaded discussions with identity gating enforced by role and submission outcome.
@@ -450,9 +454,13 @@ So that I get immediate, actionable feedback on submissions.
 
 ---
 
-## Epic 3: Editor Dashboard & Reviewer Assignment
+## Epic 3: Editor Dashboard & Reviewer Assignment -- COMPLETE
+
+<!-- Updated from Epic 3 retrospective -->
 
 Editors can view all submissions in a pipeline dashboard, consume triage reports, assign action editors, get intelligent reviewer match suggestions with explainable rationale, invite reviewers, monitor progress, make decisions, and view audit trails and payment calculations.
+
+> **Completion:** 2026-02-08 | All 7 stories delivered in ~208 minutes (YOLO mode). 73 tests passing (100%). Quality gate FAIL due to 0% FULL AC coverage (5 P0 criteria untested: audit log creation, embedding generation, invitation token hashing, undo decision time window, audit append-only invariant). 4 tech debt items resolved within epic (TD-020 through TD-023: roles dedup, decision function dedup, constant dedup, audit labels). 5 new P0 items identified (TD-024 through TD-027). Editor feature folder (`app/features/editor/`, 14 components) and admin feature folder (`app/features/admin/`, 2 components) established. Shared role constants extracted to `convex/helpers/roles.ts`. See `EPIC-3-TRACEABILITY.md`.
 
 ### Story 3.1: Editor Pipeline Dashboard
 

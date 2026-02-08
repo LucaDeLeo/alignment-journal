@@ -22,15 +22,10 @@ import {
   unauthorizedError,
   validationError,
 } from './helpers/errors'
+import { EDITOR_ROLES, WRITE_ROLES } from './helpers/roles'
 
 import type { Doc } from './_generated/dataModel'
 import type { ActionCtx, MutationCtx, QueryCtx } from './_generated/server'
-
-// Roles allowed to read reviewer profiles (editor-level access)
-const EDITOR_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
-
-// Roles allowed to write/modify reviewer profiles
-const WRITE_ROLES = ['admin', 'editor_in_chief'] as const
 
 /** Reusable validator for a single publication entry. */
 const publicationValidator = v.object({

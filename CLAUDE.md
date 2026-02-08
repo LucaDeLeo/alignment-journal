@@ -19,13 +19,14 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - Feature modules in `app/features/{domain}/` with barrel exports (`index.ts`)
 
 ### Feature Folder Pattern
-<!-- Updated from Epic 2 retrospective -->
+<!-- Updated from Epic 3 retrospective -->
 - Co-locate related components, utilities, and constants in `app/features/{domain}/`
 - Each feature folder has an `index.ts` barrel export for clean imports from route files
 - Naming: `feature-verb.tsx` (e.g., `submission-form.tsx`, `triage-report-card.tsx`)
 - Shared utilities within a feature: `{domain}-constants.ts`, `status-utils.ts`
-- Established folders: `app/features/submissions/` (11 files), `app/features/auth/`
-- Future epics should follow: `app/features/editor/`, `app/features/review/`, etc.
+- Established folders: `app/features/submissions/` (11 files), `app/features/auth/`, `app/features/editor/` (14 files), `app/features/admin/` (3 files)
+- Future epics should follow: `app/features/review/`, `app/features/article/`, etc.
+- Cross-feature reuse: import from sibling feature barrel exports (e.g., `~/features/submissions` in editor components)
 
 ### Config Files
 - `vite.config.ts` - Vite + TanStack Start + Tailwind + React Compiler
@@ -66,11 +67,28 @@ Peer-reviewed journal platform for theoretical AI alignment research.
 - `app/components/route-skeleton.tsx` - route-level skeleton with `default`/`centered`/`sidebar` variants
 - Respects `prefers-reduced-motion` (static skeleton when reduced motion preferred)
 
+### Convex Shared Helpers
+<!-- Updated from Epic 3 retrospective -->
+- `convex/helpers/auth.ts` - HOF wrappers for RBAC (see Auth Wrappers below)
+- `convex/helpers/transitions.ts` - Editorial state machine (`VALID_TRANSITIONS`, `assertTransition`)
+- `convex/helpers/errors.ts` - Structured `ConvexError` helpers (10 error types)
+- `convex/helpers/roles.ts` - Shared role constants (`EDITOR_ROLES`, `WRITE_ROLES`) used by 7+ Convex files
+- Frontend re-exports shared Convex constants via feature barrel files (e.g., `app/features/editor/editor-constants.ts`)
+
 ### Auth Wrappers (Convex RBAC)
 - `convex/helpers/auth.ts` - HOF wrappers: `withUser`, `withRole`, `withAuthor`, `withEditor`, `withAdmin`, `withReviewer`, `withActionEditor`
 - All Convex mutations/queries use a wrapper except `ensureUser` (bootstraps the user record on first auth, cannot require an existing user)
 - `me` query uses the Convex "skip" pattern: gated on `isBootstrapped` state so it does not fire before `ensureUser` completes
 - `switchRole` mutation has a server-side guard checking `DEMO_ROLE_SWITCHER` env var -- disabled in production to prevent role self-escalation
+- Editor role gating: most editor functions use `withUser` + manual `EDITOR_ROLES.includes(ctx.user.role)` check (from `convex/helpers/roles.ts`) because the `withEditor` wrapper is too restrictive (only allows `editor_in_chief`)
+
+### Audit Trail Pattern
+<!-- Added from Epic 3 retrospective -->
+- `convex/audit.ts` - `logAction` internalMutation (append-only, only write path to `auditLogs` table)
+- Deferred write pattern: `ctx.scheduler.runAfter(0, internal.audit.logAction, { submissionId, actorId, actorRole, action, details })`
+- Used by: `transitionStatus`, `assignActionEditor`, `sendInvitations`, `revokeInvitation`, `makeDecision`, `undoDecision`
+- `AuditTimeline` component in `app/features/editor/audit-timeline.tsx` subscribes reactively via `usePaginatedQuery`
+- Action labels mapped in `audit-timeline.tsx` -- when adding new action types, update the `ACTION_LABELS` mapping in the same story
 
 ### Error Boundaries
 - `app/components/error-boundary.tsx` - class-based, wraps each route group's Outlet

@@ -1,9 +1,10 @@
+import { EDITOR_ROLES } from '../../../convex/helpers/roles'
 import { SUBMISSION_STATUSES } from '../../../convex/helpers/transitions'
 import { STATUS_COLORS, STATUS_LABELS } from '../submissions/status-utils'
 
 import type { SubmissionStatus } from '../../../convex/helpers/transitions'
 
-export const EDITOR_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
+export { EDITOR_ROLES }
 
 export const STATUS_GROUPS: ReadonlyArray<{
   label: string

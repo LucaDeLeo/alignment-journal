@@ -6,6 +6,7 @@ import {
   environmentMisconfiguredError,
   unauthorizedError,
 } from './helpers/errors'
+import { EDITOR_ROLES } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -210,8 +211,6 @@ export const listUsers = query({
     return await ctx.db.query('users').collect()
   }),
 })
-
-const EDITOR_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
 
 /**
  * Lists users eligible for action editor assignment.

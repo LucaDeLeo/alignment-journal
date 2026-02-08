@@ -4,11 +4,10 @@ import { v } from 'convex/values'
 import { internalMutation, query } from './_generated/server'
 import { withUser } from './helpers/auth'
 import { unauthorizedError } from './helpers/errors'
+import { EDITOR_ROLES } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
-
-const EDITOR_ROLES = ['editor_in_chief', 'action_editor', 'admin'] as const
 
 /**
  * Logs an action to the auditLogs table.
