@@ -61,7 +61,7 @@ development_status:
   3-1-editor-pipeline-dashboard:done
   3-2-submission-detail-view-with-triage-results:done
   3-3-action-editor-assignment-and-audit-trail:done
-  3-4-reviewer-profile-management-and-embedding-generation: backlog
+  3-4-reviewer-profile-management-and-embedding-generation:done
   3-5-intelligent-reviewer-matching-with-explainable-rationale: backlog
   3-6-reviewer-invitation-and-progress-monitoring: backlog
   3-7-editorial-decisions: backlog

@@ -22,6 +22,13 @@
 ## db.get() Usage
 - Convex supports both `ctx.db.get(id)` and `ctx.db.get('tableName', id)` overloads
 
+## Embedding Generation Pattern (`matching.ts`)
+- `"use node";` first line for OpenAI SDK access
+- Deferred scheduling: mutation calls `ctx.scheduler.runAfter(0, internal.matching.generateEmbedding, { profileId })`
+- Stale-check in `saveEmbedding`: compares `updatedAt` from profile read against current profile `updatedAt` to prevent concurrent job overwrites
+- `getProfileInternal` (internalQuery) and `saveEmbedding` (internalMutation) are internal-only — not client-accessible
+- OpenAI `text-embedding-3-large` with explicit `dimensions: 1536` (default is 3072)
+
 ## Chained Action Pattern (`triage.ts`)
 - `"use node";` must be first line for Node.js runtime (required by `unpdf`, `ai`, `@ai-sdk/anthropic`)
 - Chained internalActions: each action writes results via internalMutation, then schedules the next action via `ctx.scheduler.runAfter(0, ...)`

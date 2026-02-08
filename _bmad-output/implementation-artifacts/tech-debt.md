@@ -172,3 +172,12 @@
 - **Fix:** Denormalize reviewer summary and triage severity onto the `submissions` table (updated by mutations that create/update reviews and triage reports), or create a separate summary table.
 - **Priority:** P2 -- Address before production scale
 - **Status:** Open. Identified 2026-02-08 during code review.
+
+## TD-020: EDITOR_ROLES constant duplicated across 4 Convex files
+- **Story:** 3-4-reviewer-profile-management-and-embedding-generation
+- **Location:** `convex/matching.ts:25`, `convex/audit.ts:11`, `convex/users.ts:187`, `convex/submissions.ts:21`
+- **Severity:** P3
+- **Description:** The `EDITOR_ROLES` constant (`['editor_in_chief', 'action_editor', 'admin']`) is defined identically in 4 separate Convex files. Adding or removing an editor-level role requires updating all 4 files in sync.
+- **Fix:** Extract `EDITOR_ROLES` (and `WRITE_ROLES`) to `convex/helpers/roles.ts` and import in all consumer files.
+- **Priority:** P3 -- Low risk at current scale, address when convenient
+- **Status:** Open. Identified 2026-02-08 during code review.
