@@ -15,6 +15,7 @@ import { StatusTimeline } from '../submissions/status-timeline'
 import { TriageDisplay } from '../submissions/triage-display'
 import { ActionEditorSelector } from './action-editor-selector'
 import { AuditTimeline } from './audit-timeline'
+import { ReviewerMatchPanel } from './reviewer-match-panel'
 import { StatusTransitionChip } from './status-transition-chip'
 
 import type { Id } from '../../../convex/_generated/dataModel'
@@ -164,6 +165,12 @@ export function EditorSubmissionDetail({
         submissionId={submissionId}
         submissionStatus={submission.status}
       />
+
+      {/* Reviewer Matching — only for matchable statuses */}
+      {(submission.status === 'TRIAGE_COMPLETE' ||
+        submission.status === 'UNDER_REVIEW') && (
+        <ReviewerMatchPanel submissionId={submissionId} />
+      )}
 
       {/* Pipeline Progress */}
       <section className="mt-10">

@@ -10,6 +10,8 @@ export {
 } from './editor-constants'
 export { EditorSubmissionDetail } from './submission-detail-editor'
 export { PipelineFilters } from './pipeline-filters'
+export { ReviewerMatchCard } from './reviewer-match-card'
+export { ReviewerMatchPanel } from './reviewer-match-panel'
 export { PipelineTable } from './pipeline-table'
 export { StatusTransitionChip } from './status-transition-chip'
 

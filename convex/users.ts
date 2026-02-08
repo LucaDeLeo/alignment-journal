@@ -54,6 +54,33 @@ export const getByClerkId = internalQuery({
 })
 
 /**
+ * Internal query to look up a user by their document ID.
+ * Used by the matching action to resolve reviewer user data.
+ */
+export const getByIdInternal = internalQuery({
+  args: { userId: v.id('users') },
+  returns: v.union(
+    v.object({
+      _id: v.id('users'),
+      name: v.string(),
+      affiliation: v.string(),
+      role: roleValidator,
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get('users', args.userId)
+    if (!user) return null
+    return {
+      _id: user._id,
+      name: user.name,
+      affiliation: user.affiliation,
+      role: user.role,
+    }
+  },
+})
+
+/**
  * Creates a Convex user record on first authentication via Clerk.
  *
  * This mutation is idempotent — if a record already exists for the

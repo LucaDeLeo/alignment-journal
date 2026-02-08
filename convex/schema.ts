@@ -150,6 +150,30 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index('by_submissionId', ['submissionId']),
 
+  matchResults: defineTable({
+    submissionId: v.id('submissions'),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('running'),
+      v.literal('complete'),
+      v.literal('failed'),
+    ),
+    matches: v.array(
+      v.object({
+        profileId: v.id('reviewerProfiles'),
+        userId: v.id('users'),
+        reviewerName: v.string(),
+        affiliation: v.string(),
+        researchAreas: v.array(v.string()),
+        publicationTitles: v.array(v.string()),
+        rationale: v.string(),
+        confidence: v.float64(),
+      }),
+    ),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index('by_submissionId', ['submissionId']),
+
   reviewInvites: defineTable({
     submissionId: v.id('submissions'),
     reviewerId: v.id('users'),
