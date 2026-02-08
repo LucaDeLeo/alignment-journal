@@ -136,6 +136,8 @@ export default defineSchema({
       v.literal('submitted'),
       v.literal('approved'),
     ),
+    authorAccepted: v.optional(v.boolean()),
+    authorAcceptedAt: v.optional(v.number()),
     revision: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),

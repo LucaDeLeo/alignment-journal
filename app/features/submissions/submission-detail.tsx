@@ -4,11 +4,13 @@ import { Link } from '@tanstack/react-router'
 
 import { api } from '../../../convex/_generated/api'
 import { STATUS_COLORS, STATUS_LABELS, formatDate } from './status-utils'
+import { AbstractReviewPanel } from './abstract-review-panel'
 import { StatusTimeline } from './status-timeline'
 import { TriageDisplay } from './triage-display'
 
 import type { Id } from '../../../convex/_generated/dataModel'
 
+import { DiscussionThread } from '~/features/review'
 import { Badge } from '~/components/ui/badge'
 
 interface SubmissionDetailProps {
@@ -58,6 +60,23 @@ export function SubmissionDetail({ submissionId }: SubmissionDetailProps) {
           {submission.abstract}
         </p>
       </section>
+
+      {/* Reviewer Abstract (ACCEPTED submissions only) */}
+      {submission.status === 'ACCEPTED' && (
+        <AbstractReviewPanel submissionId={submissionId} />
+      )}
+
+      {/* Discussion Thread (ACCEPTED submissions only) */}
+      {submission.status === 'ACCEPTED' && (
+        <section className="mt-8">
+          <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Discussion
+          </h2>
+          <div className="rounded-lg border">
+            <DiscussionThread submissionId={submissionId} />
+          </div>
+        </section>
+      )}
 
       {/* Authors */}
       <section className="mt-8">

@@ -39,6 +39,8 @@ export const getBySubmission = query({
       wordCount: v.number(),
       isSigned: v.boolean(),
       status: abstractStatusValidator,
+      authorAccepted: v.optional(v.boolean()),
+      authorAcceptedAt: v.optional(v.number()),
       revision: v.number(),
       reviewerName: v.string(),
       isOwnAbstract: v.boolean(),
@@ -89,6 +91,8 @@ export const getBySubmission = query({
         wordCount: abstract.wordCount,
         isSigned: abstract.isSigned,
         status: abstract.status,
+        authorAccepted: abstract.authorAccepted,
+        authorAcceptedAt: abstract.authorAcceptedAt,
         revision: abstract.revision,
         reviewerName: reviewer?.name ?? 'Unknown',
         isOwnAbstract: abstract.reviewerId === ctx.user._id,
@@ -252,12 +256,20 @@ export const updateContent = mutation({
       }
 
       const newRevision = abstract.revision + 1
-      await ctx.db.patch('reviewerAbstracts', abstract._id, {
+      const patch: Record<string, unknown> = {
         content: args.content,
         wordCount: countWords(args.content),
         revision: newRevision,
         updatedAt: Date.now(),
-      })
+      }
+
+      // Clear author acceptance if abstract was previously accepted
+      if (abstract.authorAccepted === true) {
+        patch.authorAccepted = false
+        patch.authorAcceptedAt = undefined
+      }
+
+      await ctx.db.patch('reviewerAbstracts', abstract._id, patch)
 
       return { revision: newRevision }
     },
@@ -435,6 +447,76 @@ export const approveAbstract = mutation({
         actorId: ctx.user._id,
         actorRole: ctx.user.role,
         action: 'abstract_approved',
+      })
+
+      return null
+    },
+  ),
+})
+
+/**
+ * Author accepts the reviewer abstract for publication.
+ * Validates the caller is the submission author and the abstract is ready for review.
+ * Idempotent — returns early if already accepted.
+ */
+export const authorAcceptAbstract = mutation({
+  args: { submissionId: v.id('submissions') },
+  returns: v.null(),
+  handler: withUser(
+    async (
+      ctx: MutationCtx & { user: Doc<'users'> },
+      args: { submissionId: Id<'submissions'> },
+    ) => {
+      // Validate the submission exists and the caller is the author
+      const submission = await ctx.db.get(
+        'submissions',
+        args.submissionId,
+      )
+      if (!submission) {
+        throw notFoundError('Submission')
+      }
+      if (submission.authorId !== ctx.user._id) {
+        throw unauthorizedError(
+          'Only the submission author can accept the abstract',
+        )
+      }
+
+      // Get the reviewer abstract
+      const abstract = await ctx.db
+        .query('reviewerAbstracts')
+        .withIndex('by_submissionId', (q) =>
+          q.eq('submissionId', args.submissionId),
+        )
+        .unique()
+
+      if (!abstract) {
+        throw notFoundError('Reviewer abstract')
+      }
+
+      // Validate status is submitted or approved (not drafting)
+      if (abstract.status === 'drafting') {
+        throw validationError(
+          'Cannot accept an abstract that is still being drafted',
+        )
+      }
+
+      // Idempotent — return early if already accepted
+      if (abstract.authorAccepted === true) {
+        return null
+      }
+
+      await ctx.db.patch('reviewerAbstracts', abstract._id, {
+        authorAccepted: true,
+        authorAcceptedAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+
+      // Audit trail
+      await ctx.scheduler.runAfter(0, internal.audit.logAction, {
+        submissionId: args.submissionId,
+        actorId: ctx.user._id,
+        actorRole: ctx.user.role,
+        action: 'abstract_author_accepted',
       })
 
       return null

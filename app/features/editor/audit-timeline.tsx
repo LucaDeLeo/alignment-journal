@@ -21,6 +21,10 @@ const ACTION_LABELS: Record<string, string> = {
   decision_rejected: 'Rejected',
   decision_revision_requested: 'Revision requested',
   decision_undone: 'Decision undone',
+  abstract_assigned: 'Abstract assigned',
+  abstract_submitted: 'Abstract submitted',
+  abstract_approved: 'Abstract approved',
+  abstract_author_accepted: 'Author accepted abstract',
 }
 
 function formatActionLabel(action: string): string {
