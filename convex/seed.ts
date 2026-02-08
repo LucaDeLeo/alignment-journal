@@ -1,6 +1,10 @@
 import { v } from 'convex/values'
 
-import { action, internalMutation, internalQuery } from './_generated/server'
+import {
+  internalAction,
+  internalMutation,
+  internalQuery,
+} from './_generated/server'
 import { internal } from './_generated/api'
 import { submissionStatusValidator } from './helpers/transitions'
 
@@ -806,13 +810,18 @@ function buildDiscussions(
   baseTime: number,
   ids: {
     submission3: Id<'submissions'>
+    submission5: Id<'submissions'>
     author1: Id<'users'>
     reviewer1: Id<'users'>
     reviewer2: Id<'users'>
+    reviewer3: Id<'users'>
   },
 ) {
   const discussBase = baseTime + 22 * DAY_MS
+  const sub5DiscussBase = baseTime + 22 * DAY_MS
+
   return [
+    // Submission 3 (ACCEPTED — Scalable Oversight)
     {
       submissionId: ids.submission3,
       authorId: ids.reviewer1,
@@ -844,6 +853,53 @@ function buildDiscussions(
         'You raise a valid point. The key insight from our theoretical result is that the recursive decomposition does not need to eliminate ambiguity — it only needs to reduce it sufficiently at each level for the logarithmic bound to hold. Section 3.3 formalizes this as the "monotone disambiguation" property. In practice, our empirical results show that 2-3 levels of decomposition suffice for the benchmark tasks. We have added a new paragraph in the discussion acknowledging the theoretical possibility of tasks requiring deeper recursion.',
       createdAt: discussBase + DAY_MS + 6 * 3_600_000,
       updatedAt: discussBase + DAY_MS + 6 * 3_600_000,
+    },
+    // Submission 5 (PUBLISHED — Mechanistic Interpretability)
+    {
+      submissionId: ids.submission5,
+      authorId: ids.reviewer1,
+      content:
+        'The modularity finding for refusal circuits is striking. Have you investigated whether these circuits remain modular when the model is fine-tuned on adversarial data? My concern is that adversarial fine-tuning might entangle the refusal circuits with other capabilities in ways that undermine targeted safety interventions.',
+      createdAt: sub5DiscussBase,
+      updatedAt: sub5DiscussBase,
+    },
+    {
+      submissionId: ids.submission5,
+      authorId: ids.author1,
+      content:
+        'Thank you for raising this important point. We ran a preliminary experiment on adversarial fine-tuning (Appendix D, Table 3) and found that moderate adversarial training (up to 5% of training data) preserves circuit modularity. However, at 20% adversarial data, we observed significant circuit entanglement — particularly between refusal and instruction-following circuits. We have added a discussion of this limitation in Section 6.2 of the revision.',
+      createdAt: sub5DiscussBase + 6 * 3_600_000,
+      updatedAt: sub5DiscussBase + 6 * 3_600_000,
+    },
+    {
+      submissionId: ids.submission5,
+      authorId: ids.reviewer3,
+      content:
+        'Building on Reviewer 1\'s question — the entanglement at 20% adversarial data is concerning but not surprising given similar findings in representation engineering. Could you clarify whether the "honesty circuits" you identified overlap with the sycophancy circuits described in recent work by Perez et al. (2024)? This seems relevant for understanding the generalizability of your circuit taxonomy.',
+      createdAt: sub5DiscussBase + DAY_MS,
+      updatedAt: sub5DiscussBase + DAY_MS,
+    },
+  ]
+}
+
+function buildDiscussionReplies(
+  baseTime: number,
+  ids: {
+    submission5: Id<'submissions'>
+    author1: Id<'users'>
+    sub5FirstDiscussionId: Id<'discussions'>
+  },
+) {
+  const sub5DiscussBase = baseTime + 22 * DAY_MS
+  return [
+    {
+      submissionId: ids.submission5,
+      authorId: ids.author1,
+      parentId: ids.sub5FirstDiscussionId,
+      content:
+        'Regarding the connection to Perez et al. (2024) — we found partial overlap between our "honesty circuits" and their sycophancy circuits (approximately 40% shared attention heads). However, the refusal circuits we identified are largely distinct, suggesting that refusal behavior relies on different mechanisms than sycophancy suppression. We have added a comparison table in Section 5.3 of the revision.',
+      createdAt: sub5DiscussBase + DAY_MS + 4 * 3_600_000,
+      updatedAt: sub5DiscussBase + DAY_MS + 4 * 3_600_000,
     },
   ]
 }
@@ -877,7 +933,8 @@ function buildAuditLogs(
     submissionId: ids.submissions[0],
     actorId: ids.author1,
     actorRole: 'author',
-    action: 'submitAbstract',
+    action: 'status_transition',
+    details: 'DRAFT → SUBMITTED',
     createdAt: t,
   })
 
@@ -887,7 +944,8 @@ function buildAuditLogs(
     submissionId: ids.submissions[1],
     actorId: ids.author2,
     actorRole: 'author',
-    action: 'submitAbstract',
+    action: 'status_transition',
+    details: 'DRAFT → SUBMITTED',
     createdAt: t,
   })
   t = baseTime + 7 * DAY_MS
@@ -895,7 +953,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[1],
     actorId: ids.eic,
     actorRole: 'editor_in_chief',
-    action: 'assignActionEditor',
+    action: 'action_editor_assigned',
     details: 'Assigned Dr. Elena Vasquez as action editor',
     createdAt: t,
   })
@@ -904,7 +962,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[1],
     actorId: ids.ae,
     actorRole: 'action_editor',
-    action: 'sendInvitations',
+    action: 'reviewer_invited',
     details: 'Invited 2 reviewers',
     createdAt: t,
   })
@@ -915,7 +973,8 @@ function buildAuditLogs(
     submissionId: ids.submissions[2],
     actorId: ids.author1,
     actorRole: 'author',
-    action: 'submitAbstract',
+    action: 'status_transition',
+    details: 'DRAFT → SUBMITTED',
     createdAt: t,
   })
   t = baseTime + 7 * DAY_MS
@@ -923,7 +982,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[2],
     actorId: ids.eic,
     actorRole: 'editor_in_chief',
-    action: 'assignActionEditor',
+    action: 'action_editor_assigned',
     details: 'Assigned Dr. Elena Vasquez as action editor',
     createdAt: t,
   })
@@ -932,7 +991,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[2],
     actorId: ids.ae,
     actorRole: 'action_editor',
-    action: 'sendInvitations',
+    action: 'reviewer_invited',
     details: 'Invited 2 reviewers',
     createdAt: t,
   })
@@ -941,7 +1000,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[2],
     actorId: ids.reviewer1,
     actorRole: 'reviewer',
-    action: 'acceptInvitation',
+    action: 'invitation_accepted',
     createdAt: t,
   })
   t = baseTime + 9 * DAY_MS + 3_600_000
@@ -949,7 +1008,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[2],
     actorId: ids.reviewer2,
     actorRole: 'reviewer',
-    action: 'acceptInvitation',
+    action: 'invitation_accepted',
     createdAt: t,
   })
   t = baseTime + 28 * DAY_MS
@@ -957,8 +1016,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[2],
     actorId: ids.eic,
     actorRole: 'editor_in_chief',
-    action: 'makeDecision',
-    details: 'Decision: ACCEPTED',
+    action: 'decision_accepted',
     createdAt: t,
   })
 
@@ -968,7 +1026,8 @@ function buildAuditLogs(
     submissionId: ids.submissions[3],
     actorId: ids.author2,
     actorRole: 'author',
-    action: 'submitAbstract',
+    action: 'status_transition',
+    details: 'DRAFT → SUBMITTED',
     createdAt: t,
   })
   t = baseTime + 7 * DAY_MS + 3_600_000
@@ -976,7 +1035,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[3],
     actorId: ids.eic,
     actorRole: 'editor_in_chief',
-    action: 'assignActionEditor',
+    action: 'action_editor_assigned',
     details: 'Assigned Dr. Elena Vasquez as action editor',
     createdAt: t,
   })
@@ -985,7 +1044,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[3],
     actorId: ids.ae,
     actorRole: 'action_editor',
-    action: 'sendInvitations',
+    action: 'reviewer_invited',
     details: 'Invited 2 reviewers',
     createdAt: t,
   })
@@ -994,7 +1053,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[3],
     actorId: ids.reviewer2,
     actorRole: 'reviewer',
-    action: 'acceptInvitation',
+    action: 'invitation_accepted',
     createdAt: t,
   })
   t = baseTime + 10 * DAY_MS
@@ -1002,7 +1061,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[3],
     actorId: ids.reviewer3,
     actorRole: 'reviewer',
-    action: 'acceptInvitation',
+    action: 'invitation_accepted',
     createdAt: t,
   })
   t = baseTime + 29 * DAY_MS
@@ -1010,8 +1069,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[3],
     actorId: ids.eic,
     actorRole: 'editor_in_chief',
-    action: 'makeDecision',
-    details: 'Decision: REJECTED',
+    action: 'decision_rejected',
     createdAt: t,
   })
 
@@ -1021,7 +1079,8 @@ function buildAuditLogs(
     submissionId: ids.submissions[4],
     actorId: ids.author1,
     actorRole: 'author',
-    action: 'submitAbstract',
+    action: 'status_transition',
+    details: 'DRAFT → SUBMITTED',
     createdAt: t,
   })
   t = baseTime + 7 * DAY_MS + 2 * 3_600_000
@@ -1029,7 +1088,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[4],
     actorId: ids.eic,
     actorRole: 'editor_in_chief',
-    action: 'assignActionEditor',
+    action: 'action_editor_assigned',
     details: 'Assigned Dr. Elena Vasquez as action editor',
     createdAt: t,
   })
@@ -1038,7 +1097,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[4],
     actorId: ids.ae,
     actorRole: 'action_editor',
-    action: 'sendInvitations',
+    action: 'reviewer_invited',
     details: 'Invited 2 reviewers',
     createdAt: t,
   })
@@ -1047,7 +1106,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[4],
     actorId: ids.reviewer1,
     actorRole: 'reviewer',
-    action: 'acceptInvitation',
+    action: 'invitation_accepted',
     createdAt: t,
   })
   t = baseTime + 9 * DAY_MS + 5 * 3_600_000
@@ -1055,7 +1114,16 @@ function buildAuditLogs(
     submissionId: ids.submissions[4],
     actorId: ids.reviewer3,
     actorRole: 'reviewer',
-    action: 'acceptInvitation',
+    action: 'invitation_accepted',
+    createdAt: t,
+  })
+  t = baseTime + 25 * DAY_MS
+  logs.push({
+    submissionId: ids.submissions[4],
+    actorId: ids.reviewer1,
+    actorRole: 'reviewer',
+    action: 'abstract_assigned',
+    details: 'Reviewer abstract assigned to Dr. Yuki Tanaka',
     createdAt: t,
   })
   t = baseTime + 30 * DAY_MS
@@ -1063,8 +1131,16 @@ function buildAuditLogs(
     submissionId: ids.submissions[4],
     actorId: ids.eic,
     actorRole: 'editor_in_chief',
-    action: 'makeDecision',
-    details: 'Decision: ACCEPTED',
+    action: 'decision_accepted',
+    createdAt: t,
+  })
+  t = baseTime + 33 * DAY_MS
+  logs.push({
+    submissionId: ids.submissions[4],
+    actorId: ids.author1,
+    actorRole: 'author',
+    action: 'abstract_author_accepted',
+    details: 'Author accepted reviewer abstract',
     createdAt: t,
   })
   t = baseTime + 35 * DAY_MS
@@ -1072,7 +1148,7 @@ function buildAuditLogs(
     submissionId: ids.submissions[4],
     actorId: ids.eic,
     actorRole: 'editor_in_chief',
-    action: 'approveAbstract',
+    action: 'abstract_approved',
     details: 'Published article with reviewer abstract',
     createdAt: t,
   })
@@ -1391,15 +1467,88 @@ function buildPayments(
 // Idempotency check
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns 'complete' if fully seeded, 'partial' if sentinel user exists
+ * but final data (match results referencing seed submissions) is missing,
+ * or 'none' if no seed data exists.
+ */
 export const checkSeeded = internalQuery({
   args: {},
-  returns: v.boolean(),
+  returns: v.union(
+    v.literal('complete'),
+    v.literal('partial'),
+    v.literal('none'),
+  ),
   handler: async (ctx) => {
     const sentinel = await ctx.db
       .query('users')
       .withIndex('by_clerkId', (q) => q.eq('clerkId', SENTINEL_CLERK_ID))
       .unique()
-    return sentinel !== null
+    if (!sentinel) return 'none'
+    // Check that match results exist (seeded last) to confirm full completion
+    const matchResult = await ctx.db.query('matchResults').first()
+    return matchResult ? 'complete' : 'partial'
+  },
+})
+
+/** Delete all seed data (users with seed_ prefix and their related records). */
+export const cleanupPartialSeed = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    // Find all seed users by clerkId prefix
+    const allUsers = await ctx.db.query('users').collect()
+    const seedUsers = allUsers.filter((u) => u.clerkId.startsWith('seed_'))
+    const seedUserIds = new Set(seedUsers.map((u) => u._id))
+
+    // Delete seed users
+    for (const user of seedUsers) {
+      await ctx.db.delete(user._id)
+    }
+
+    // Delete submissions by seed authors
+    const submissions = await ctx.db.query('submissions').collect()
+    const seedSubmissions = submissions.filter((s) =>
+      seedUserIds.has(s.authorId),
+    )
+    const seedSubmissionIds = new Set(seedSubmissions.map((s) => s._id))
+    for (const sub of seedSubmissions) {
+      await ctx.db.delete(sub._id)
+    }
+
+    // Delete records referencing seed submissions
+    const tables = [
+      'triageReports',
+      'reviews',
+      'reviewerAbstracts',
+      'discussions',
+      'auditLogs',
+      'notifications',
+      'payments',
+      'reviewInvites',
+      'matchResults',
+    ] as const
+    for (const table of tables) {
+      const records = await ctx.db.query(table).collect()
+      for (const record of records) {
+        if (
+          'submissionId' in record &&
+          seedSubmissionIds.has(record.submissionId as Id<'submissions'>)
+        ) {
+          await ctx.db.delete(record._id)
+        }
+      }
+    }
+
+    // Delete reviewer profiles for seed users
+    const profiles = await ctx.db.query('reviewerProfiles').collect()
+    for (const profile of profiles) {
+      if (seedUserIds.has(profile.userId)) {
+        await ctx.db.delete(profile._id)
+      }
+    }
+
+    return null
   },
 })
 
@@ -1794,7 +1943,7 @@ export const seedMatchResults = internalMutation({
 // Main seed Action
 // ---------------------------------------------------------------------------
 
-export const seedData = action({
+export const seedData = internalAction({
   args: {},
   returns: v.union(
     v.object({ alreadySeeded: v.literal(true) }),
@@ -1815,12 +1964,14 @@ export const seedData = action({
     }),
   ),
   handler: async (ctx) => {
-    // Idempotency check
-    const alreadySeeded: boolean = await ctx.runQuery(
-      internal.seed.checkSeeded,
-    )
-    if (alreadySeeded) {
+    // Idempotency check — detects both complete and partial seed states
+    const seedStatus = await ctx.runQuery(internal.seed.checkSeeded)
+    if (seedStatus === 'complete') {
       return { alreadySeeded: true as const }
+    }
+    // Clean up partial seed data from a previous failed run
+    if (seedStatus === 'partial') {
+      await ctx.runMutation(internal.seed.cleanupPartialSeed)
     }
 
     // Base time: 60 days ago
@@ -1899,16 +2050,40 @@ export const seedData = action({
       { records: abstractsData },
     )
 
-    // 7. Discussions (Submission 3)
+    // 7. Discussions (Submission 3 and 5 — top-level messages)
     const discussionsData = buildDiscussions(baseTime, {
       submission3: submissionIds[2],
+      submission5: submissionIds[4],
       author1: uids.author1,
       reviewer1: uids.reviewer1,
       reviewer2: uids.reviewer2,
+      reviewer3: uids.reviewer3,
     })
     const discussionIds: Array<Id<'discussions'>> = await ctx.runMutation(
       internal.seed.seedDiscussions,
       { records: discussionsData },
+    )
+
+    // 7a. Discussion replies (need parent IDs from step 7)
+    // Submission 5 discussions start at index 4 (after 4 Submission 3 messages).
+    // Validate the index exists to prevent silent degradation if ordering changes.
+    const SUB5_FIRST_DISCUSSION_INDEX = 4
+    if (
+      SUB5_FIRST_DISCUSSION_INDEX >= discussionIds.length ||
+      !discussionIds[SUB5_FIRST_DISCUSSION_INDEX]
+    ) {
+      throw new Error(
+        `Expected discussion at index ${SUB5_FIRST_DISCUSSION_INDEX} for Submission 5 threaded reply, but only ${discussionIds.length} discussions were created`,
+      )
+    }
+    const repliesData = buildDiscussionReplies(baseTime, {
+      submission5: submissionIds[4],
+      author1: uids.author1,
+      sub5FirstDiscussionId: discussionIds[SUB5_FIRST_DISCUSSION_INDEX],
+    })
+    const replyIds: Array<Id<'discussions'>> = await ctx.runMutation(
+      internal.seed.seedDiscussions,
+      { records: repliesData },
     )
 
     // 8. Audit logs
@@ -1985,7 +2160,7 @@ export const seedData = action({
       reviewerProfiles: profileIds.length,
       reviews: reviewIds.length,
       reviewerAbstracts: abstractIds.length,
-      discussions: discussionIds.length,
+      discussions: discussionIds.length + replyIds.length,
       auditLogs: auditIds.length,
       notifications: notificationIds.length,
       payments: paymentIds.length,
