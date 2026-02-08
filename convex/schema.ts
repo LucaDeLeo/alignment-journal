@@ -34,6 +34,7 @@ export default defineSchema({
     actionEditorId: v.optional(v.id('users')),
     assignedAt: v.optional(v.number()),
     decisionNote: v.optional(v.string()),
+    decidedAt: v.optional(v.number()),
     publicConversation: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -156,10 +156,11 @@ export const makeDecision = mutation({
 
       const now = Date.now()
 
-      // Patch submission
+      // Patch submission (decidedAt is used for undo TTL, independent of updatedAt)
       await ctx.db.patch('submissions', submission._id, {
         status: args.decision,
         decisionNote: args.decisionNote ?? undefined,
+        decidedAt: now,
         updatedAt: now,
       })
 
@@ -246,8 +247,10 @@ export const undoDecision = mutation({
         )
       }
 
-      // Validate time window (10 seconds) using server-side updatedAt
-      const elapsed = Date.now() - submission.updatedAt
+      // Validate time window (10 seconds) using decidedAt (immutable after decision)
+      // Falls back to updatedAt for decisions made before decidedAt was introduced
+      const decisionTimestamp = submission.decidedAt ?? submission.updatedAt
+      const elapsed = Date.now() - decisionTimestamp
       if (elapsed > 10_000) {
         throw validationError('Undo window has expired')
       }
@@ -256,6 +259,7 @@ export const undoDecision = mutation({
       await ctx.db.patch('submissions', submission._id, {
         status: 'DECISION_PENDING',
         decisionNote: undefined,
+        decidedAt: undefined,
         updatedAt: Date.now(),
       })
 

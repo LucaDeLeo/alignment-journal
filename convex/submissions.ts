@@ -10,6 +10,7 @@ import {
   validationError,
 } from './helpers/errors'
 import {
+  DECISION_ONLY_STATUSES,
   assertTransition,
   submissionStatusValidator,
 } from './helpers/transitions'
@@ -444,6 +445,14 @@ export const transitionStatus = mutation({
       const submission = await ctx.db.get('submissions', args.submissionId)
       if (!submission) {
         throw notFoundError('Submission', args.submissionId)
+      }
+
+      // Block decision statuses — these must go through decisions.makeDecision
+      // to enforce required notes, author notifications, and decision-specific audit
+      if (DECISION_ONLY_STATUSES.includes(args.newStatus)) {
+        throw validationError(
+          `Cannot transition to ${args.newStatus} via transitionStatus. Use makeDecision instead.`,
+        )
       }
 
       assertTransition(submission.status, args.newStatus)

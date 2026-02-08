@@ -57,6 +57,16 @@ export const VALID_TRANSITIONS: Record<
 } as const
 
 /**
+ * Decision statuses that can only be reached via decisions.makeDecision.
+ * transitionStatus must not allow these directly.
+ */
+export const DECISION_ONLY_STATUSES: ReadonlyArray<SubmissionStatus> = [
+  'ACCEPTED',
+  'REJECTED',
+  'REVISION_REQUESTED',
+] as const
+
+/**
  * Validates that a status transition is allowed.
  * Throws `ConvexError({ code: "INVALID_TRANSITION" })` if the transition is not valid.
  */
