@@ -4,6 +4,7 @@ import {
   Scripts,
   createRootRouteWithContext,
   useRouteContext,
+  useSearch,
 } from '@tanstack/react-router'
 import {
   ClerkProvider,
@@ -12,20 +13,18 @@ import {
   SignedOut,
   UserButton,
   useAuth,
+  useClerk,
 } from '@clerk/tanstack-react-start'
 import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 import { auth } from '@clerk/tanstack-react-start/server'
 import { ConvexProviderWithClerk } from 'convex/react-clerk'
-import { useMutation } from 'convex/react'
 import { SearchIcon } from 'lucide-react'
-
-import { api } from '../../convex/_generated/api'
 
 import type { ConvexQueryClient } from '@convex-dev/react-query'
 import type { ConvexReactClient } from 'convex/react'
 import type { QueryClient } from '@tanstack/react-query'
-import { RoleBadge, RoleSwitcher, useCurrentUser } from '~/features/auth'
+import { RoleBadge, RoleSwitcher, useBootstrappedUser } from '~/features/auth'
 import { Button } from '~/components/ui/button'
 import { Kbd } from '~/components/ui/kbd'
 import { CommandPalette } from '~/components/command-palette'
@@ -115,59 +114,14 @@ const showRoleSwitcher =
  * Only rendered inside `<SignedIn>` so Clerk auth is guaranteed.
  */
 function AuthenticatedHeader() {
-  const ensureUser = useMutation(api.users.ensureUser)
-  const [isBootstrapped, setIsBootstrapped] = React.useState(false)
-  const [bootstrapError, setBootstrapError] = React.useState(false)
-
-  React.useEffect(() => {
-    let cancelled = false
-    void ensureUser()
-      .then(() => {
-        if (!cancelled) {
-          setIsBootstrapped(true)
-        }
-      })
-      .catch(() => {
-        // Auth timing or network failure — retry once after a short delay
-        if (!cancelled) {
-          setTimeout(() => {
-            if (!cancelled) {
-              void ensureUser()
-                .then(() => {
-                  if (!cancelled) {
-                    setIsBootstrapped(true)
-                  }
-                })
-                .catch(() => {
-                  if (!cancelled) {
-                    setBootstrapError(true)
-                  }
-                })
-            }
-          }, 2000)
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [ensureUser])
-
-  const user = useCurrentUser(isBootstrapped)
+  const { user, isBootstrapped, bootstrapError } = useBootstrappedUser()
 
   if (bootstrapError) {
     return (
       <>
-        <button
-          className="text-xs text-destructive underline"
-          onClick={() => {
-            setBootstrapError(false)
-            void ensureUser()
-              .then(() => setIsBootstrapped(true))
-              .catch(() => setBootstrapError(true))
-          }}
-        >
-          Retry
-        </button>
+        <span className="text-xs text-destructive">
+          Failed to load user
+        </span>
         <UserButton />
       </>
     )
@@ -186,6 +140,24 @@ function AuthenticatedHeader() {
       <UserButton />
     </>
   )
+}
+
+/**
+ * Opens the Clerk sign-in modal when `?signIn=true` is in the URL.
+ * Used by protected route redirects to prompt unauthenticated users.
+ */
+function SignInAutoOpen() {
+  const clerk = useClerk()
+  const search = useSearch({ strict: false })
+  const signIn = (search as Record<string, unknown>).signIn
+
+  React.useEffect(() => {
+    if (signIn && clerk.loaded) {
+      clerk.openSignIn()
+    }
+  }, [signIn, clerk])
+
+  return null
 }
 
 function CommandPaletteTrigger() {
@@ -228,6 +200,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 <AuthenticatedHeader />
               </SignedIn>
               <SignedOut>
+                <SignInAutoOpen />
                 <SignInButton mode="modal" />
               </SignedOut>
             </div>

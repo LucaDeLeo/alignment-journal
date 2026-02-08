@@ -20,6 +20,8 @@ import { Route as ReviewIndexRouteImport } from './routes/review/index'
 import { Route as EditorIndexRouteImport } from './routes/editor/index'
 import { Route as ArticleIndexRouteImport } from './routes/article/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as SubmitSubmissionIdRouteImport } from './routes/submit/$submissionId'
+import { Route as EditorSubmissionIdRouteImport } from './routes/editor/$submissionId'
 
 const SubmitRouteRoute = SubmitRouteRouteImport.update({
   id: '/submit',
@@ -76,6 +78,16 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const SubmitSubmissionIdRoute = SubmitSubmissionIdRouteImport.update({
+  id: '/$submissionId',
+  path: '/$submissionId',
+  getParentRoute: () => SubmitRouteRoute,
+} as any)
+const EditorSubmissionIdRoute = EditorSubmissionIdRouteImport.update({
+  id: '/$submissionId',
+  path: '/$submissionId',
+  getParentRoute: () => EditorRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -84,6 +96,8 @@ export interface FileRoutesByFullPath {
   '/editor': typeof EditorRouteRouteWithChildren
   '/review': typeof ReviewRouteRouteWithChildren
   '/submit': typeof SubmitRouteRouteWithChildren
+  '/editor/$submissionId': typeof EditorSubmissionIdRoute
+  '/submit/$submissionId': typeof SubmitSubmissionIdRoute
   '/admin/': typeof AdminIndexRoute
   '/article/': typeof ArticleIndexRoute
   '/editor/': typeof EditorIndexRoute
@@ -92,6 +106,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/editor/$submissionId': typeof EditorSubmissionIdRoute
+  '/submit/$submissionId': typeof SubmitSubmissionIdRoute
   '/admin': typeof AdminIndexRoute
   '/article': typeof ArticleIndexRoute
   '/editor': typeof EditorIndexRoute
@@ -106,6 +122,8 @@ export interface FileRoutesById {
   '/editor': typeof EditorRouteRouteWithChildren
   '/review': typeof ReviewRouteRouteWithChildren
   '/submit': typeof SubmitRouteRouteWithChildren
+  '/editor/$submissionId': typeof EditorSubmissionIdRoute
+  '/submit/$submissionId': typeof SubmitSubmissionIdRoute
   '/admin/': typeof AdminIndexRoute
   '/article/': typeof ArticleIndexRoute
   '/editor/': typeof EditorIndexRoute
@@ -121,13 +139,23 @@ export interface FileRouteTypes {
     | '/editor'
     | '/review'
     | '/submit'
+    | '/editor/$submissionId'
+    | '/submit/$submissionId'
     | '/admin/'
     | '/article/'
     | '/editor/'
     | '/review/'
     | '/submit/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/article' | '/editor' | '/review' | '/submit'
+  to:
+    | '/'
+    | '/editor/$submissionId'
+    | '/submit/$submissionId'
+    | '/admin'
+    | '/article'
+    | '/editor'
+    | '/review'
+    | '/submit'
   id:
     | '__root__'
     | '/'
@@ -136,6 +164,8 @@ export interface FileRouteTypes {
     | '/editor'
     | '/review'
     | '/submit'
+    | '/editor/$submissionId'
+    | '/submit/$submissionId'
     | '/admin/'
     | '/article/'
     | '/editor/'
@@ -231,6 +261,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/submit/$submissionId': {
+      id: '/submit/$submissionId'
+      path: '/$submissionId'
+      fullPath: '/submit/$submissionId'
+      preLoaderRoute: typeof SubmitSubmissionIdRouteImport
+      parentRoute: typeof SubmitRouteRoute
+    }
+    '/editor/$submissionId': {
+      id: '/editor/$submissionId'
+      path: '/$submissionId'
+      fullPath: '/editor/$submissionId'
+      preLoaderRoute: typeof EditorSubmissionIdRouteImport
+      parentRoute: typeof EditorRouteRoute
+    }
   }
 }
 
@@ -259,10 +303,12 @@ const ArticleRouteRouteWithChildren = ArticleRouteRoute._addFileChildren(
 )
 
 interface EditorRouteRouteChildren {
+  EditorSubmissionIdRoute: typeof EditorSubmissionIdRoute
   EditorIndexRoute: typeof EditorIndexRoute
 }
 
 const EditorRouteRouteChildren: EditorRouteRouteChildren = {
+  EditorSubmissionIdRoute: EditorSubmissionIdRoute,
   EditorIndexRoute: EditorIndexRoute,
 }
 
@@ -283,10 +329,12 @@ const ReviewRouteRouteWithChildren = ReviewRouteRoute._addFileChildren(
 )
 
 interface SubmitRouteRouteChildren {
+  SubmitSubmissionIdRoute: typeof SubmitSubmissionIdRoute
   SubmitIndexRoute: typeof SubmitIndexRoute
 }
 
 const SubmitRouteRouteChildren: SubmitRouteRouteChildren = {
+  SubmitSubmissionIdRoute: SubmitSubmissionIdRoute,
   SubmitIndexRoute: SubmitIndexRoute,
 }
 

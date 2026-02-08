@@ -8,7 +8,7 @@ import * as React from 'react'
 
 import { ErrorBoundary } from '~/components/error-boundary'
 import { RouteSkeleton } from '~/components/route-skeleton'
-import { useCurrentUser } from '~/features/auth'
+import { useBootstrappedUser } from '~/features/auth'
 
 const ALLOWED_ROLES = ['admin'] as const
 
@@ -22,16 +22,24 @@ export const Route = createFileRoute('/admin')({
 })
 
 function AdminLayout() {
-  const user = useCurrentUser(true)
+  const { user } = useBootstrappedUser()
   const navigate = useNavigate()
+
+  const hasAccess =
+    user && ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])
+
+  React.useEffect(() => {
+    if (user !== undefined && !hasAccess) {
+      void navigate({ to: '/' })
+    }
+  }, [user, hasAccess, navigate])
 
   if (user === undefined) {
     return <RouteSkeleton variant="default" />
   }
 
-  if (!user || !ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
-    void navigate({ to: '/' })
-    return null
+  if (!hasAccess) {
+    return <RouteSkeleton variant="default" />
   }
 
   return (

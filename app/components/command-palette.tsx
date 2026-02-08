@@ -119,10 +119,11 @@ export function CommandPalette({
                 <CommandItem
                   key={role.value}
                   onSelect={() => {
-                    switchRole({ role: role.value }).catch(() => {
-                      // Role switching failed — surface via console for now;
-                      // the role badge won't update so the user sees no change.
-                    })
+                    switchRole({ role: role.value }).catch(
+                      (error: unknown) => {
+                        console.error('Failed to switch role:', error)
+                      },
+                    )
                     setOpen(false)
                   }}
                 >
