@@ -113,6 +113,7 @@ const showRoleSwitcher =
 function AuthenticatedHeader() {
   const ensureUser = useMutation(api.users.ensureUser)
   const [isBootstrapped, setIsBootstrapped] = React.useState(false)
+  const [bootstrapError, setBootstrapError] = React.useState(false)
 
   React.useEffect(() => {
     let cancelled = false
@@ -134,7 +135,9 @@ function AuthenticatedHeader() {
                   }
                 })
                 .catch(() => {
-                  // Silently fail — user will need to refresh
+                  if (!cancelled) {
+                    setBootstrapError(true)
+                  }
                 })
             }
           }, 2000)
@@ -146,6 +149,25 @@ function AuthenticatedHeader() {
   }, [ensureUser])
 
   const user = useCurrentUser(isBootstrapped)
+
+  if (bootstrapError) {
+    return (
+      <>
+        <button
+          className="text-xs text-destructive underline"
+          onClick={() => {
+            setBootstrapError(false)
+            void ensureUser()
+              .then(() => setIsBootstrapped(true))
+              .catch(() => setBootstrapError(true))
+          }}
+        >
+          Retry
+        </button>
+        <UserButton />
+      </>
+    )
+  }
 
   return (
     <>
