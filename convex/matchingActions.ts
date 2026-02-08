@@ -1,10 +1,9 @@
 "use node";
 
 import { v } from 'convex/values'
-import OpenAI from 'openai'
 
 import { generateObject } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
+import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 
 import { action, internalAction } from './_generated/server'
@@ -16,23 +15,6 @@ import { EDITOR_ROLES } from './helpers/roles'
 import type { Doc } from './_generated/dataModel'
 import type { ActionCtx } from './_generated/server'
 
-/** Maximum characters for paper text before embedding. */
-const MAX_PAPER_TEXT_LENGTH = 8000
-
-/**
- * Builds paper text from submission data for embedding.
- */
-function buildPaperText(submission: {
-  title: string
-  abstract: string
-  keywords: Array<string>
-}): string {
-  const text = `Title: ${submission.title}. Abstract: ${submission.abstract}. Keywords: ${submission.keywords.join(', ')}`
-  if (text.length > MAX_PAPER_TEXT_LENGTH) {
-    return text.slice(0, MAX_PAPER_TEXT_LENGTH)
-  }
-  return text
-}
 
 /**
  * Sanitizes an error message for client display.
@@ -85,65 +67,18 @@ function generateFallbackRationale(
 // ---------------------------------------------------------------------------
 
 /**
- * Generates a vector embedding for a reviewer profile via OpenAI.
+ * Embedding generation stub (disabled — will be replaced with a different solution).
  * Scheduled by `createOrUpdateProfile` after profile create/update.
  * On failure, logs the error and leaves the profile without an embedding.
  */
 export const generateEmbedding = internalAction({
   args: { profileId: v.id('reviewerProfiles') },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const profile = await ctx.runQuery(
-      internal.matching.getProfileInternal,
-      { profileId: args.profileId },
+  handler: async (_ctx, args) => {
+    // Embedding generation disabled — will be replaced with a different solution.
+    console.log(
+      `[matching] Embedding generation skipped for profile ${args.profileId} (disabled)`,
     )
-
-    if (!profile) {
-      console.warn(
-        `[matching] Profile ${args.profileId} not found, skipping embedding generation`,
-      )
-      return null
-    }
-
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      console.warn(
-        '[matching] OPENAI_API_KEY not configured, skipping embedding generation',
-      )
-      return null
-    }
-
-    // Build text representation of reviewer expertise
-    const areas = profile.researchAreas.join(', ')
-    const titles = profile.publications.map((p) => p.title).join('; ')
-    const text = `Research areas: ${areas}. Publications: ${titles}`
-
-    try {
-      const openai = new OpenAI({ apiKey })
-
-      const response = await openai.embeddings.create({
-        model: 'text-embedding-3-large',
-        input: text,
-        dimensions: 1536,
-      })
-
-      const embedding = response.data[0].embedding
-
-      await ctx.runMutation(internal.matching.saveEmbedding, {
-        profileId: args.profileId,
-        embedding,
-        updatedAt: profile.updatedAt,
-      })
-    } catch (error) {
-      // Graceful degradation: log the error, don't throw.
-      // The profile remains usable without an embedding.
-      const message =
-        error instanceof Error ? error.message : 'Unknown error'
-      console.error(
-        `[matching] Failed to generate embedding for profile ${args.profileId}: ${message}`,
-      )
-    }
-
     return null
   },
 })
@@ -193,16 +128,16 @@ export const findMatches = action({
 
       try {
         // Check for API key
-        const apiKey = process.env.OPENAI_API_KEY
+        const apiKey = process.env.ANTHROPIC_API_KEY
         if (!apiKey) {
           console.error(
-            '[matching] OPENAI_API_KEY not configured for reviewer matching',
+            '[matching] ANTHROPIC_API_KEY not configured for reviewer matching',
           )
           await ctx.runMutation(internal.matching.saveMatchResults, {
             submissionId: args.submissionId,
             status: 'failed',
             matches: [],
-            error: 'OpenAI API key is not configured. Please contact an administrator.',
+            error: 'Anthropic API key is not configured. Please contact an administrator.',
           })
           return null
         }
@@ -223,26 +158,12 @@ export const findMatches = action({
           return null
         }
 
-        // Generate paper embedding
-        const paperText = buildPaperText(submission)
-        const openai = new OpenAI({ apiKey })
-
-        const embeddingResponse = await openai.embeddings.create({
-          model: 'text-embedding-3-large',
-          input: paperText,
-          dimensions: 1536,
-        })
-
-        const paperEmbedding = embeddingResponse.data[0].embedding
-
-        // Vector search for similar reviewer profiles
-        const searchResults = await ctx.vectorSearch(
-          'reviewerProfiles',
-          'by_embedding',
-          { vector: paperEmbedding, limit: 10 },
+        // Fetch all reviewer profiles for LLM-based matching
+        const allProfiles = await ctx.runQuery(
+          internal.matching.getAllProfilesInternal,
         )
 
-        if (searchResults.length === 0) {
+        if (allProfiles.length === 0) {
           await ctx.runMutation(internal.matching.saveMatchResults, {
             submissionId: args.submissionId,
             status: 'complete',
@@ -251,43 +172,33 @@ export const findMatches = action({
           return null
         }
 
-        // Resolve profiles and user data, filter to valid ones
-        const enrichedMatches: Array<{
+        // Resolve user data for each profile
+        const candidates: Array<{
           profileId: Doc<'reviewerProfiles'>['_id']
           userId: Doc<'users'>['_id']
           reviewerName: string
           affiliation: string
           researchAreas: Array<string>
           publicationTitles: Array<string>
-          score: number
         }> = []
 
-        for (const result of searchResults) {
-          if (enrichedMatches.length >= 5) break
-
-          const profile = await ctx.runQuery(
-            internal.matching.getProfileInternal,
-            { profileId: result._id },
-          )
-          if (!profile || !profile.embedding) continue
-
+        for (const profile of allProfiles) {
           const user = await ctx.runQuery(internal.users.getByIdInternal, {
             userId: profile.userId,
           })
           if (!user) continue
 
-          enrichedMatches.push({
+          candidates.push({
             profileId: profile._id,
             userId: profile.userId,
             reviewerName: user.name,
             affiliation: user.affiliation,
             researchAreas: profile.researchAreas,
             publicationTitles: profile.publications.map((p) => p.title),
-            score: result._score,
           })
         }
 
-        if (enrichedMatches.length === 0) {
+        if (candidates.length === 0) {
           await ctx.runMutation(internal.matching.saveMatchResults, {
             submissionId: args.submissionId,
             status: 'complete',
@@ -296,7 +207,14 @@ export const findMatches = action({
           return null
         }
 
-        // Generate rationale via LLM (with fallback)
+        // LLM-based matching: ask Haiku to rank and explain top 5
+        const candidateList = candidates
+          .map(
+            (m, i) =>
+              `${i + 1}. ${m.reviewerName} - Research areas: ${m.researchAreas.join(', ')}. Publications: ${m.publicationTitles.join('; ')}`,
+          )
+          .join('\n')
+
         let rationaleResults: Array<{
           index: number
           rationale: string
@@ -304,21 +222,12 @@ export const findMatches = action({
         }>
 
         try {
-          const aiOpenai = createOpenAI({ apiKey })
-
-          const candidateList = enrichedMatches
-            .map(
-              (m, i) =>
-                `${i + 1}. ${m.reviewerName} - Research areas: ${m.researchAreas.join(', ')}. Publications: ${m.publicationTitles.join('; ')}`,
-            )
-            .join('\n')
-
           const { object } = await generateObject({
-            model: aiOpenai('gpt-4o-mini'),
+            model: anthropic('claude-haiku-4-5-20251001'),
             schema: rationaleSchema,
-            prompt: `You are an academic journal editor assistant. For each reviewer candidate, explain in 1-2 sentences why they are a good match for the given paper. Focus on specific overlap between the reviewer's publications/research areas and the paper's topic. Also assign a confidence score (0-1) where 1 means near-perfect expertise match.
+            prompt: `You are an academic journal editor assistant. Given a paper and a list of reviewer candidates, select the top 5 best matches and for each explain in 1-2 sentences why they are a good match. Focus on specific overlap between the reviewer's publications/research areas and the paper's topic. Assign a confidence score (0-1) where 1 means near-perfect expertise match. Return exactly the top 5 (or fewer if less than 5 candidates).
 
-Paper: ${submission.title} - ${submission.abstract}
+Paper: ${submission.title} - ${submission.abstract}. Keywords: ${submission.keywords.join(', ')}
 
 Candidates:
 ${candidateList}`,
@@ -327,43 +236,37 @@ ${candidateList}`,
           rationaleResults = object.matches
         } catch (llmError) {
           console.error(
-            `[matching] LLM rationale generation failed, using fallback: ${
+            `[matching] LLM matching failed, using fallback: ${
               llmError instanceof Error ? llmError.message : 'Unknown error'
             }`,
           )
-          // Fallback: keyword-overlap rationale
-          rationaleResults = enrichedMatches.map((m, i) => ({
+          // Fallback: keyword-overlap rationale for first 5
+          rationaleResults = candidates.slice(0, 5).map((m, i) => ({
             index: i + 1,
             rationale: generateFallbackRationale(
               submission.keywords,
               m.researchAreas,
             ),
-            confidence: Math.min(m.score, 1),
+            confidence: 0.5,
           }))
         }
 
-        // Build final match results
-        const finalMatches = enrichedMatches.map((m, i) => {
-          const rationale = rationaleResults.find((r) => r.index === i + 1)
-          return {
-            profileId: m.profileId,
-            userId: m.userId,
-            reviewerName: m.reviewerName,
-            affiliation: m.affiliation,
-            researchAreas: m.researchAreas,
-            publicationTitles: m.publicationTitles,
-            rationale:
-              rationale?.rationale ??
-              generateFallbackRationale(
-                submission.keywords,
-                m.researchAreas,
-              ),
-            confidence: Math.max(
-              0,
-              Math.min(1, rationale?.confidence ?? m.score),
-            ),
-          }
-        })
+        // Build final match results from LLM selections
+        const finalMatches = rationaleResults
+          .filter((r) => r.index >= 1 && r.index <= candidates.length)
+          .map((r) => {
+            const candidate = candidates[r.index - 1]
+            return {
+              profileId: candidate.profileId,
+              userId: candidate.userId,
+              reviewerName: candidate.reviewerName,
+              affiliation: candidate.affiliation,
+              researchAreas: candidate.researchAreas,
+              publicationTitles: candidate.publicationTitles,
+              rationale: r.rationale,
+              confidence: Math.max(0, Math.min(1, r.confidence)),
+            }
+          })
 
         // Save results
         await ctx.runMutation(internal.matching.saveMatchResults, {

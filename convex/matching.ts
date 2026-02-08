@@ -64,6 +64,27 @@ const reviewerUserValidator = v.object({
  * Internal query to fetch a reviewer profile by its document ID.
  * Used by the `generateEmbedding` action to read profile data.
  */
+export const getAllProfilesInternal = internalQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id('reviewerProfiles'),
+      userId: v.id('users'),
+      researchAreas: v.array(v.string()),
+      publications: v.array(publicationValidator),
+    }),
+  ),
+  handler: async (ctx) => {
+    const profiles = await ctx.db.query('reviewerProfiles').collect()
+    return profiles.map((p) => ({
+      _id: p._id,
+      userId: p.userId,
+      researchAreas: p.researchAreas,
+      publications: p.publications,
+    }))
+  },
+})
+
 export const getProfileInternal = internalQuery({
   args: { profileId: v.id('reviewerProfiles') },
   returns: v.union(
