@@ -25,6 +25,7 @@ import type * as pdfExtraction from "../pdfExtraction.js";
 import type * as pdfExtractionActions from "../pdfExtractionActions.js";
 import type * as reviewerAbstracts from "../reviewerAbstracts.js";
 import type * as reviews from "../reviews.js";
+import type * as seed from "../seed.js";
 import type * as storage from "../storage.js";
 import type * as submissions from "../submissions.js";
 import type * as triage from "../triage.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   pdfExtractionActions: typeof pdfExtractionActions;
   reviewerAbstracts: typeof reviewerAbstracts;
   reviews: typeof reviews;
+  seed: typeof seed;
   storage: typeof storage;
   submissions: typeof submissions;
   triage: typeof triage;

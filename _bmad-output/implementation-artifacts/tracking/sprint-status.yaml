@@ -91,7 +91,7 @@ development_status:
 
   # Epic 7: Seed Data & Demo Experience
   epic-7: backlog
-  7-1-seed-data-generation-action: backlog
+  7-1-seed-data-generation-action:done
   7-2-seed-reviewer-pool-with-expertise-profiles: backlog
   7-3-seed-reviews-discussions-and-published-article: backlog
   epic-7-retrospective: optional
