@@ -121,8 +121,18 @@ export function DecisionPanel({
                 previousDecision: activeDecision,
               })
               toast.info('Decision undone.')
-            } catch {
-              toast.error('Undo window has expired.')
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : String(err)
+              if (message.includes('Undo window has expired')) {
+                toast.error('Undo window has expired.')
+              } else if (message.includes('Cannot undo')) {
+                toast.error('Decision status has changed and can no longer be undone.')
+              } else if (message.includes('Requires editor')) {
+                toast.error('You do not have permission to undo this decision.')
+              } else {
+                toast.error('Failed to undo decision. Please try again.')
+              }
             }
           },
         },

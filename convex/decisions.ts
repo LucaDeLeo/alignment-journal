@@ -248,9 +248,11 @@ export const undoDecision = mutation({
       }
 
       // Validate time window (10 seconds) using decidedAt (immutable after decision)
-      // Falls back to updatedAt for decisions made before decidedAt was introduced
-      const decisionTimestamp = submission.decidedAt ?? submission.updatedAt
-      const elapsed = Date.now() - decisionTimestamp
+      // Decisions without decidedAt predate undo support and cannot be undone
+      if (submission.decidedAt == null) {
+        throw validationError('Undo window has expired')
+      }
+      const elapsed = Date.now() - submission.decidedAt
       if (elapsed > 10_000) {
         throw validationError('Undo window has expired')
       }
