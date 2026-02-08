@@ -406,10 +406,11 @@ Each innovation is validated by the prototype itself: LLM triage runs on real al
 
 ### Accessibility
 
-- WCAG 2.1 AA compliance for published article pages (public-facing content)
+- WCAG 2.1 AAA compliance for all pages, with particular attention to published article pages (public-facing content)
 - Keyboard navigation for core workflows (submission, review, dashboard)
 - Screen reader compatibility on primary interfaces verified by automated accessibility audit (axe-core or equivalent)
-- Sufficient color contrast ratios (4.5:1 for normal text)
+- Sufficient color contrast ratios (7:1 for normal text, 4.5:1 for large text)
+- Support for prefers-reduced-motion, prefers-contrast, and forced-colors media queries
 
 ### Code Quality
 

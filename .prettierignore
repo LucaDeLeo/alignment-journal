@@ -1,0 +1,5 @@
+convex/_generated
+.output
+.nitro
+node_modules
+bun.lock

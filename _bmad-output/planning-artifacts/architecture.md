@@ -29,7 +29,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 **Non-Functional Requirements:**
 - Performance: Page loads < 2s, triage pipeline < 5min, matching < 30s, real-time updates < 1s
 - Security: HTTPS, JWT validation on every request, role-based access enforced at data layer, reviewer identity isolation server-side, API keys server-side only
-- Accessibility: WCAG 2.1 AA target for prototype, keyboard navigation, screen reader support, minimum contrast 4.5:1 for normal text (3:1 for large text), prefers-reduced-motion support
+- Accessibility: WCAG 2.1 AAA target, keyboard navigation, screen reader support, minimum contrast 7:1 for normal text (4.5:1 for large text), prefers-reduced-motion support, prefers-contrast and forced-colors support
 - Code Quality: Strict TypeScript, kebab-case files, atomic git commits, clean README
 
 **Scale & Complexity:**
@@ -42,7 +42,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 - 7-day build constraint — architecture must favor convention over configuration, starter templates over greenfield setup
 - Solo developer — no microservices, serverless monolith pattern required
 - Desktop-first (1024px+), light mode only for prototype scope
-- UX mandates: shadcn/ui + Tailwind + Motion (Framer Motion), Satoshi + Newsreader fonts, spring animations (150-250ms), split-view workspace, skeleton loading, cmd+K palette
+- UX mandates: shadcn/ui + Tailwind + Motion (Framer Motion), Satoshi + Newsreader + JetBrains Mono fonts, spring animations (150-250ms), split-view workspace, skeleton loading, cmd+K palette
 - External dependencies: LLM API (Claude Sonnet 4.5 primary), embedding API (OpenAI text-embedding-3-large), PDF text extraction (unpdf), auth provider (Clerk)
 - Deployment: Vercel as hosting platform
 - Real-time reactivity is non-negotiable — the editor dashboard, triage progress, and discussions must push updates without polling
@@ -138,7 +138,7 @@ Convex client with reactive subscriptions, server-side query preloading via TanS
 | React Compiler | `babel-plugin-react-compiler` (Vite plugin config) | ~5 min |
 | LLM Integration | Vercel AI SDK (`ai`) | ~5 min |
 | PDF Extraction | `unpdf` | ~5 min |
-| Fonts | Satoshi (Fontshare) + Newsreader (Google Fonts) | ~10 min |
+| Fonts | Satoshi (Fontshare) + Newsreader (Google Fonts) + JetBrains Mono (Google Fonts) | ~10 min |
 
 **Package Manager:** Bun for all operations — `bun install`, `bun dev`, `bun run build`, `bunx` for CLI tools.
 
@@ -196,7 +196,9 @@ Separate role-specific query functions per data type. Author-facing queries neve
 - Auto-saved review documents include `revision` (monotonic number) and `updatedAt` for optimistic concurrency preconditions.
 - `triageReports` records include `triageRunId`, `passName`, `idempotencyKey`, `attemptCount`, and `lastError` for retry-safe orchestration.
 
-**Validation Strategy:** Convex native `v.*` validators for all backend function arguments and schema definitions. Zod schemas on the frontend for form validation and Vercel AI SDK `generateObject` structured output. TypeScript types serve as the implicit contract between layers.
+**Validation Strategy:** Convex native `v.*` validators for all backend function `args` AND `returns` definitions — every query, mutation, and action MUST define both. Zod schemas on the frontend for form validation and Vercel AI SDK `generateObject` structured output. TypeScript types serve as the implicit contract between layers.
+
+**System Fields:** All Convex documents automatically include `_id` (typed as `Id<"tableName">`) and `_creationTime` (number, Unix ms). These must not be defined in the schema but are always available in query results and can be used for sorting and filtering.
 
 ### Authentication & Security
 
@@ -300,13 +302,17 @@ app/routes/
 
 ### LLM Pipeline Architecture
 
+**Node.js Runtime Directive:** All Convex Action files that call external APIs (Vercel AI SDK, OpenAI, unpdf) MUST include `"use node";` as the first line of the file. This enables the Node.js runtime required by these libraries. Files containing only queries and mutations do NOT use this directive.
+
 **Orchestration:** Chained Convex Actions with scheduling. Each triage pass is a separate Action:
 1. `triageScope` — scope fit analysis against journal focus areas
 2. `triageFormatting` — formatting and completeness validation
 3. `triageCitations` — citation extraction and verification
 4. `triageClaims` — technical claims analysis and evidence assessment
 
-Each Action: runs LLM call via Vercel AI SDK `generateObject` → writes structured results to `triageReports` via mutation → schedules next Action. Every run gets a `triageRunId`, and each pass uses `idempotencyKey = submissionId + triageRunId + passName`; duplicate executions with the same key no-op. Passes are re-entrant, retries use bounded exponential backoff (max 3 attempts), and terminal failures mark the run as `"failed"` with `lastError`. Reactive queries on `triageReports` push progress to the editor dashboard automatically.
+Each Action: runs LLM call via Vercel AI SDK `generateObject` → writes structured results to `triageReports` via internal mutation → schedules next Action. Every run gets a `triageRunId`, and each pass uses `idempotencyKey = submissionId + triageRunId + passName`; duplicate executions with the same key no-op. Passes are re-entrant, retries use bounded exponential backoff (max 3 attempts), and terminal failures mark the run as `"failed"` with `lastError`. Reactive queries on `triageReports` push progress to the editor dashboard automatically.
+
+**External API Response Sanitization:** Actions MUST sanitize responses from external APIs (Claude, OpenAI) before writing results to the database. Never write raw API error messages or stack traces to client-visible tables — map failures to `EXTERNAL_SERVICE_ERROR` with a safe, generic message. Store raw error details only in server-side logs or internal-only fields (e.g., `lastError` on `triageReports`).
 
 **Reviewer Matching:** Convex vector search. On reviewer profile creation, generate embedding via OpenAI text-embedding-3-large, store in reviewer document. On paper submission, generate paper embedding, run `ctx.vectorSearch()` against reviewer pool, return ranked matches with rationale generated by a follow-up LLM call.
 
@@ -362,21 +368,23 @@ Each Action: runs LLM call via Vercel AI SDK `generateObject` → writes structu
 **Convex Directory:**
 ```
 convex/
-  schema.ts              — single file, all tables + indexes
+  schema.ts              — single file, all tables + indexes + validators
   helpers/
     auth.ts              — role-gated wrappers (withEditor, withReviewer, etc.)
     errors.ts            — ConvexError codes and helpers
     transitions.ts       — state machine transition map
   submissions.ts         — queries + mutations for submissions
   reviews.ts             — queries + mutations for reviews
-  triage.ts              — triage Actions + result mutations
-  matching.ts            — vector search + match Actions
+  triage.ts              — "use node"; Actions + internalMutations for results
+  matching.ts            — "use node"; Actions + internalMutations for embeddings
   discussions.ts         — threaded discussion queries + mutations
   users.ts               — user management, role assignment
-  audit.ts               — audit log mutations + queries
+  audit.ts               — internalMutation for logging + queries for reading
   payments.ts            — payment calculation queries
   notifications.ts       — notification mutations
-  seed.ts                — seed data Action
+  storage.ts             — generateUploadUrl mutation + serving URL helpers
+  seed.ts                — "use node"; seed data Action (preview deploy hook)
+  crons.ts               — cron job definitions (targets internal functions only)
   __tests__/             — co-located Convex function tests
 ```
 
@@ -417,10 +425,17 @@ app/
 
 ### Format Patterns
 
-**Convex Function Returns:**
+**Convex Function Signatures:**
+- Every query, mutation, and action MUST define both `args` and `returns` validators
 - Queries return data directly (no wrapper) — Convex handles errors via exceptions
 - Mutations return the created/updated document ID or void
-- Actions return structured results or void (write results via mutations)
+- Actions return structured results or void (write results via internal mutations)
+
+**Internal Function Pattern:**
+- Mutations called from Actions (triage result writes, embedding storage, audit logging from scheduled functions) MUST use `internalMutation` / `internalAction`
+- Cron job targets MUST use `internalMutation` or `internalAction` — never public functions
+- Internal functions are imported via `internal` from `convex/_generated/api`
+- Internal functions are NOT accessible from the client — only from other Convex functions via `ctx.runMutation(internal.*)` or `ctx.scheduler.runAfter()`
 
 **Error Format:**
 ```typescript
@@ -447,9 +462,29 @@ throw new ConvexError({ code: "INVALID_TRANSITION", message: "Cannot move from S
 - Form validation errors: Inline below fields via Zod, shown on blur
 - LLM API errors: Caught in Actions, written to `triageReports` with `"failed"` status, displayed in triage UI
 
+**Pagination Pattern:**
+- Editor dashboard submission list and audit log views MUST use cursor-based pagination via `paginationOptsValidator` and `usePaginatedQuery`
+- Paginated queries use `.paginate(paginationOpts)` on the server and return `{ page, isDone, continueCursor }`
+- Client uses `usePaginatedQuery` with `{ initialNumItems: 25 }` and `loadMore(25)` for infinite scroll
+- Status values: `"CanLoadMore"`, `"LoadingMore"`, `"Exhausted"`
+
+**Conditional Query Pattern:**
+- For role-based views that conditionally fetch data, pass `"skip"` as the query argument instead of conditionally calling the hook
+- NEVER conditionally call `useSuspenseQuery` — this violates React's rules of hooks
+- Example: `useSuspenseQuery(api.reviews.getMyAssignments, userRole === "reviewer" ? { reviewerId } : "skip")`
+
+**File Upload Pattern (PDF Submissions):**
+1. Client validates file type (`application/pdf`) and size before upload
+2. Client calls `generateUploadUrl` mutation to get a short-lived upload URL
+3. Client POSTs the file to the upload URL with `Content-Type: application/pdf` header
+4. Server returns a `storageId` (type `Id<"_storage">`)
+5. Client calls a second mutation to save the `storageId` reference in the `submissions` table along with `fileName`, `fileSize`, and `fileType` metadata
+- Serving: queries generate URLs via `ctx.storage.getUrl(storageId)` after access checks — never expose raw storage URLs to unauthorized users
+- Deletion: when a submission is deleted, both the `_storage` file AND the database record must be removed to prevent orphaned files
+
 **Auto-Save Pattern:**
 - Debounce: 500ms after last keystroke
-- Implementation: `useMutation` with debounced callback
+- Implementation: `useMutation` with debounced callback, enhanced with `.withOptimisticUpdate()` for instant UI feedback on save status
 - Status indicator: "Saved" / "Saving..." / "Offline" — persistent in UI
 - Conflict resolution: versioned writes (`revision`/`updatedAt` precondition). On mismatch, mutation returns `VERSION_CONFLICT`, keeps local draft intact, and shows merge/reload options (never silent overwrite).
 
@@ -465,24 +500,47 @@ throw new ConvexError({ code: "INVALID_TRANSITION", message: "Cannot move from S
 
 **All AI Agents MUST:**
 - Follow the naming conventions exactly — no exceptions for "convenience"
+- Define both `args` and `returns` validators on every Convex query, mutation, and action — no exceptions
 - Use the role-gated auth wrappers for every Convex function that accesses user data
 - Check the transition map before any status change — never set status directly
 - Use `ConvexError` with typed codes — never throw plain `Error` in Convex functions
+- Use `.withIndex()` for all database queries on indexed fields — never use `.filter()` when an index exists
+- Use `internalMutation` / `internalAction` for all functions called from Actions, scheduled functions, or cron jobs — never expose these as public functions
+- Add `"use node";` as the first line of any Convex Action file that imports Node.js APIs (Vercel AI SDK, unpdf, OpenAI client)
+- Use `"skip"` for conditional query arguments — never conditionally call `useSuspenseQuery` hooks
 - Use Suspense + Error Boundaries — never manual `isLoading` checks for Convex queries
+- Use `usePaginatedQuery` for list views that may grow (submission list, audit log) — never fetch unbounded collections
 - Place new components in the correct feature folder — never in a generic `components/` unless truly shared
 - Co-locate tests with source files
 - Keep `role-switcher` demo/local only — never render or enable impersonation controls in production
 - Use the established CSS variable tokens — never raw HSL values for colors
+- Sanitize external API responses in Actions before writing to client-visible tables — never expose raw API errors
 
 ### Anti-Patterns to Avoid
 
-- Creating a `utils/` or `helpers/` folder at the feature level — use `lib/` for shared, inline for feature-specific
+**Convex Backend:**
+- Using `.filter()` instead of `.withIndex()` — this is the #1 Convex performance anti-pattern; always use `.withIndex()` for indexed fields
+- Omitting `returns` validators on Convex functions — every query, mutation, and action needs both `args` and `returns`
+- Using `v.any()` for argument or return validators — use precise types for safety; `v.any()` bypasses runtime validation
+- Using public functions as cron job targets or Action callbacks — use `internalMutation` / `internalAction` for all server-to-server calls
+- Forgetting `"use node";` in Action files that use Node.js APIs — causes runtime errors
+- Calling external APIs from queries or mutations — only Actions can make external calls
+- Using Actions for database-only operations — use queries (reads) or mutations (writes) instead
+- Writing raw external API error messages to client-visible tables — sanitize and map to typed error codes
+- Deleting submission records without also deleting the associated `_storage` file — causes orphaned files
 - Mixing role-gated and ungated queries in the same file — keep auth boundary clear
-- Using `useQuery` instead of `useSuspenseQuery` — breaks SSR hydration
+- Using `ctx.db.patch` without checking the transition map for status fields
 - Storing derived data (payment totals, review completion %) — compute in queries
 - Creating REST-style Convex HTTP actions when a query/mutation suffices
-- Using `ctx.db.patch` without checking the transition map for status fields
+
+**Frontend:**
+- Using `useQuery` instead of `useSuspenseQuery` — breaks SSR hydration
+- Conditionally calling `useSuspenseQuery` instead of passing `"skip"` — violates React hooks rules
+- Fetching unbounded collections without pagination — use `usePaginatedQuery` for list views
 - Using manual `useMemo`/`useCallback`/`React.memo` — React Compiler handles memoization automatically
+- Creating a `utils/` or `helpers/` folder at the feature level — use `lib/` for shared, inline for feature-specific
+
+**General:**
 - Shipping `role-switcher` in production or relying on it for authorization
 - Using `npm` or `npx` — use `bun` and `bunx` exclusively
 
@@ -516,15 +574,16 @@ alignment-journal/
 │   │   └── transitions.ts                 # VALID_TRANSITIONS map + assertTransition()
 │   ├── submissions.ts                     # Queries + mutations: create, update status, list
 │   ├── reviews.ts                         # Role-gated queries + mutations: submit, update
-│   ├── triage.ts                          # Actions: runScope, runFormatting, runCitations, runClaims
-│   ├── matching.ts                        # Actions: generateEmbedding, findMatches
+│   ├── triage.ts                          # "use node"; Actions + internalMutations for results
+│   ├── matching.ts                        # "use node"; Actions + internalMutations for embeddings
 │   ├── discussions.ts                     # Queries + mutations: threads, messages
 │   ├── users.ts                           # User management, role assignment, profiles
-│   ├── audit.ts                           # Audit log mutations + filterable queries
+│   ├── audit.ts                           # internalMutation for logging + queries for reading
 │   ├── payments.ts                        # Payment calculation queries
 │   ├── notifications.ts                   # Notification record mutations
-│   ├── storage.ts                         # File upload/serving URL generation helpers
-│   ├── seed.ts                            # Seed data Action (preview deploy hook)
+│   ├── storage.ts                         # generateUploadUrl mutation + serving URL helpers
+│   ├── seed.ts                            # "use node"; seed data Action (preview deploy hook)
+│   ├── crons.ts                           # Cron job definitions (targets internal functions only)
 │   └── __tests__/
 │       ├── submissions.test.ts
 │       ├── reviews.test.ts
@@ -669,7 +728,8 @@ alignment-journal/
 │   └── submission-transitions.spec.ts    # Invalid status transitions are rejected
 └── public/
     └── fonts/
-        └── satoshi/                      # Satoshi variable font files
+        ├── satoshi/                      # Satoshi variable font files
+        └── jetbrains-mono/              # JetBrains Mono variable font files
 ```
 
 ### Architectural Boundaries
@@ -717,9 +777,15 @@ alignment-journal/
 | RBAC enforcement | `convex/helpers/auth.ts` | Every Convex function file |
 | State machine transitions | `convex/helpers/transitions.ts` | `submissions.ts`, `reviews.ts` |
 | Error codes | `convex/helpers/errors.ts` | All Convex functions, `error-boundary.tsx` |
-| Auto-save | `app/hooks/use-auto-save.ts` | `review-section-form.tsx`, `reviewer-abstract-form.tsx` |
+| Return validators | Every Convex function (`args` + `returns`) | All Convex function files |
+| Internal function boundary | `internalMutation` / `internalAction` | `triage.ts`, `matching.ts`, `audit.ts`, `crons.ts` |
+| Node.js runtime directive | `"use node";` at top of Action files | `triage.ts`, `matching.ts`, `seed.ts` |
+| Auto-save + optimistic updates | `app/hooks/use-auto-save.ts` | `review-section-form.tsx`, `reviewer-abstract-form.tsx` |
+| Pagination | `usePaginatedQuery` + `paginationOptsValidator` | `submission-list.tsx`, `audit-timeline.tsx` |
+| Conditional queries | `"skip"` pattern for role-based data | All role-dependent feature components |
 | Loading states | `app/components/page-skeleton.tsx`, `error-boundary.tsx` | All route files |
 | Confidentiality rendering | `app/components/confidentiality-badge.tsx` | `discussions/`, `reviews/`, `audit/` |
+| File upload flow | `convex/storage.ts` (3-step: URL → POST → save) | `pdf-upload.tsx` |
 
 ### Integration Points
 
@@ -779,7 +845,7 @@ Author uploads PDF → convex/storage.ts (file storage)
 - Expanded E2E coverage is deferred until after prototype scope
 
 **Asset Organization:**
-- `public/fonts/` — self-hosted font files (Satoshi)
+- `public/fonts/` — self-hosted font files (Satoshi, JetBrains Mono; Newsreader via Google Fonts CDN)
 - Static assets served by Vite/Vercel from `public/`
 - PDF files stored in Convex file storage (not in `public/`)
 
@@ -862,7 +928,7 @@ Author uploads PDF → convex/storage.ts (file storage)
 | Invite token abuse prevention | Signed invite tokens (`jti`, `exp`) + one-time consume + revocation via `reviewInvites` | COVERED |
 | Deployment environment isolation | Branch/context mapping + separate prod/preview deploy keys + fail-closed checks | COVERED |
 | Auto-save conflict safety | Version preconditions + `VERSION_CONFLICT` handling with merge/reload UI | COVERED |
-| WCAG 2.1 AA | Accessible components + contrast tokens meeting 4.5:1 normal text and 3:1 large text | COVERED |
+| WCAG 2.1 AAA | Accessible components + contrast tokens meeting 7:1 normal text and 4.5:1 large text + prefers-reduced-motion + prefers-contrast + forced-colors | COVERED |
 | Keyboard navigation | shadcn/ui components + cmd+K palette (cmdk) | COVERED |
 | Strict TypeScript | Enforced at build time, Convex codegen provides type safety | COVERED |
 | Kebab-case files | Defined in naming conventions, enforced via guidelines | COVERED |
@@ -892,6 +958,19 @@ Author uploads PDF → convex/storage.ts (file storage)
 - Accessibility automation in CI (axe + keyboard-only smoke) is not yet wired into every PR pipeline
 - Convex Agents component noted in context analysis but deliberately not used — chained Actions chosen for simplicity
 
+**Convex Best Practices Audit (Completed):**
+All gaps identified during skills-based architecture review have been resolved:
+- Return validators mandated on all functions (convex-best-practices, convex-functions)
+- `"use node"` directive specified for Action files (convex-functions)
+- `withIndex` enforcement and `.filter()` anti-pattern documented (convex-best-practices)
+- Internal function boundary clarified for Actions, crons, and scheduled functions (convex-functions, convex-security-check)
+- Pagination pattern added for list views (convex-realtime)
+- Conditional query `"skip"` pattern added (convex-realtime)
+- Optimistic updates added to auto-save pattern (convex-realtime)
+- File upload 3-step flow documented (convex-file-storage)
+- External API response sanitization specified (convex-security-audit)
+- `crons.ts` added to project structure (convex-cron-jobs)
+
 ### Architecture Completeness Checklist
 
 **Requirements Analysis**
@@ -913,8 +992,15 @@ Author uploads PDF → convex/storage.ts (file storage)
 - [x] Naming conventions established (backend, frontend, shared)
 - [x] Structure patterns defined (Convex directory, frontend directory, test co-location)
 - [x] Communication patterns specified (routes → features → Convex, internal functions)
-- [x] Process patterns documented (loading, error handling, auto-save, imports)
-- [x] Conflict-safe auto-save pattern documented (version preconditions + user-visible resolution)
+- [x] Process patterns documented (loading, error handling, auto-save, pagination, conditional queries, file upload, imports)
+- [x] Conflict-safe auto-save pattern documented (version preconditions + optimistic updates + user-visible resolution)
+- [x] Return validators mandated on all Convex functions (args + returns)
+- [x] Internal function boundary specified (Actions → internalMutation, crons → internal functions)
+- [x] Node.js runtime directive (`"use node"`) specified for Action files
+- [x] Pagination pattern specified (cursor-based via usePaginatedQuery)
+- [x] Conditional query pattern specified ("skip" for role-based views)
+- [x] File upload flow documented (3-step: generateUploadUrl → POST → save reference)
+- [x] External API response sanitization specified
 
 **Project Structure**
 - [x] Complete directory structure defined (~70+ files)
