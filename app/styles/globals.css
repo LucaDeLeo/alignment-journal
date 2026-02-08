@@ -156,3 +156,26 @@
     animation: none;
   }
 }
+
+/* === Triage Card Stagger Animation === */
+
+@keyframes triage-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.triage-card-enter {
+  animation: triage-card-enter 200ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .triage-card-enter {
+    animation: none;
+  }
+}

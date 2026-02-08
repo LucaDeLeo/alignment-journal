@@ -5,6 +5,7 @@ import { Link } from '@tanstack/react-router'
 import { api } from '../../../convex/_generated/api'
 import { STATUS_COLORS, STATUS_LABELS, formatDate } from './status-utils'
 import { StatusTimeline } from './status-timeline'
+import { TriageDisplay } from './triage-display'
 
 import type { Id } from '../../../convex/_generated/dataModel'
 
@@ -91,6 +92,12 @@ export function SubmissionDetail({ submissionId }: SubmissionDetailProps) {
           ))}
         </div>
       </section>
+
+      {/* Triage Analysis */}
+      <TriageDisplay
+        submissionId={submissionId}
+        submissionStatus={submission.status}
+      />
 
       {/* Status Timeline */}
       <section className="mt-10">

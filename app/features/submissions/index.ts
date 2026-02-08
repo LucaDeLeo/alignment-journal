@@ -10,3 +10,6 @@ export {
 export { SubmissionDetail } from './submission-detail'
 export { SubmissionForm } from './submission-form'
 export { SubmissionList } from './submission-list'
+export { TriageDisplay } from './triage-display'
+export { TriageProgressIndicator } from './triage-progress'
+export { TriageReportCard } from './triage-report-card'
