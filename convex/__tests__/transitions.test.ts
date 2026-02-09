@@ -43,7 +43,7 @@ describe('VALID_TRANSITIONS', () => {
   it('defines correct transitions for each status', () => {
     expect([...VALID_TRANSITIONS.DRAFT]).toEqual(['SUBMITTED'])
     expect([...VALID_TRANSITIONS.SUBMITTED]).toEqual(['TRIAGING'])
-    expect([...VALID_TRANSITIONS.TRIAGING]).toEqual(['TRIAGE_COMPLETE'])
+    expect([...VALID_TRANSITIONS.TRIAGING]).toEqual(['TRIAGE_COMPLETE', 'TRIAGING'])
     expect([...VALID_TRANSITIONS.TRIAGE_COMPLETE]).toEqual([
       'DESK_REJECTED',
       'UNDER_REVIEW',

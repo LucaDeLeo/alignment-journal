@@ -1,11 +1,12 @@
-import { useMutation } from 'convex/react'
-import { PlusIcon, XIcon } from 'lucide-react'
+import { useMutation, useQuery } from 'convex/react'
+import { LoaderIcon, PlusIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { api } from '../../../convex/_generated/api'
 import { PdfUpload } from './pdf-upload'
+import { PreCheckDisplay } from './pre-check-display'
 
 import type { Id } from '../../../convex/_generated/dataModel'
 
@@ -63,8 +64,11 @@ export function SubmissionForm({
   onSuccess,
 }: SubmissionFormProps) {
   const createSubmission = useMutation(api.submissions.create)
+  const startPreCheck = useMutation(api.preCheck.start)
+  const startMetadataExtraction = useMutation(api.pdfMetadata.startExtraction)
 
   const [title, setTitle] = React.useState('')
+  const [checkRunId, setCheckRunId] = React.useState<string | null>(null)
   const [authors, setAuthors] = React.useState<
     Array<{ name: string; affiliation: string }>
   >([{ name: userName, affiliation: userAffiliation }])
@@ -83,8 +87,36 @@ export function SubmissionForm({
   const [touchedFields, setTouchedFields] = React.useState<Set<string>>(
     new Set(),
   )
+  const [hasPrefilled, setHasPrefilled] = React.useState(false)
 
   const formRef = React.useRef<HTMLFormElement>(null)
+
+  // Subscribe to metadata extraction results
+  const metadata = useQuery(
+    api.pdfMetadata.get,
+    pdfInfo ? { pdfStorageId: pdfInfo.storageId } : 'skip',
+  )
+
+  const isExtracting =
+    !!pdfInfo &&
+    metadata?.status !== 'complete' &&
+    metadata?.status !== 'failed'
+  const fieldsDisabled = !pdfInfo || isExtracting
+
+  // Prefill form fields once when metadata arrives
+  React.useEffect(() => {
+    if (!hasPrefilled && metadata?.status === 'complete' && metadata.result) {
+      setTitle(metadata.result.title)
+      setAuthors(
+        metadata.result.authors.length > 0
+          ? metadata.result.authors
+          : [{ name: userName, affiliation: userAffiliation }],
+      )
+      setAbstract(metadata.result.abstract)
+      setKeywords(metadata.result.keywords)
+      setHasPrefilled(true)
+    }
+  }, [metadata, hasPrefilled, userName, userAffiliation])
 
   function validateField(fieldName: string) {
     const data = { title, authors, abstract, keywords }
@@ -259,9 +291,50 @@ export function SubmissionForm({
           New Submission
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Fill out the details below and upload your paper.
+          Upload your paper to get started. We&apos;ll extract the details
+          automatically.
         </p>
       </div>
+
+      {/* PDF Upload — first so metadata extraction can prefill fields */}
+      <div className="space-y-2" aria-invalid={!!errors.pdf || undefined}>
+        <Label>PDF Upload</Label>
+        <PdfUpload
+          onUploadComplete={(info) => {
+            setPdfInfo(info)
+            setErrors((prev) => {
+              const next = { ...prev }
+              delete next.pdf
+              return next
+            })
+            startPreCheck({ pdfStorageId: info.storageId })
+              .then(setCheckRunId)
+              .catch(() => {})
+            startMetadataExtraction({ pdfStorageId: info.storageId }).catch(
+              () => {},
+            )
+          }}
+          onRemove={() => {
+            setPdfInfo(null)
+            setCheckRunId(null)
+            setHasPrefilled(false)
+          }}
+          uploadedFile={
+            pdfInfo
+              ? { fileName: pdfInfo.fileName, fileSize: pdfInfo.fileSize }
+              : null
+          }
+          error={errors.pdf}
+        />
+      </div>
+
+      {/* Extraction status indicator */}
+      {isExtracting && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <LoaderIcon className="size-4 animate-spin" />
+          Extracting paper details...
+        </div>
+      )}
 
       {/* Title */}
       <div className="space-y-2">
@@ -273,6 +346,7 @@ export function SubmissionForm({
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => handleBlur('title')}
           aria-invalid={!!errors.title}
+          disabled={fieldsDisabled}
         />
         {errors.title && (
           <p className="text-sm text-destructive">{errors.title}</p>
@@ -291,6 +365,7 @@ export function SubmissionForm({
                 onChange={(e) => updateAuthor(index, 'name', e.target.value)}
                 onBlur={() => handleBlur('authors')}
                 aria-invalid={!!errors.authorFields?.[index]?.name}
+                disabled={fieldsDisabled}
               />
               {touchedFields.has('authors') &&
                 errors.authorFields?.[index]?.name && (
@@ -308,6 +383,7 @@ export function SubmissionForm({
                 }
                 onBlur={() => handleBlur('authors')}
                 aria-invalid={!!errors.authorFields?.[index]?.affiliation}
+                disabled={fieldsDisabled}
               />
               {touchedFields.has('authors') &&
                 errors.authorFields?.[index]?.affiliation && (
@@ -323,6 +399,7 @@ export function SubmissionForm({
                 size="icon"
                 onClick={() => removeAuthor(index)}
                 aria-label="Remove author"
+                disabled={fieldsDisabled}
               >
                 <XIcon className="size-4" />
               </Button>
@@ -337,6 +414,7 @@ export function SubmissionForm({
           variant="outline"
           size="sm"
           onClick={addAuthor}
+          disabled={fieldsDisabled}
         >
           <PlusIcon className="size-4" />
           Add author
@@ -354,6 +432,7 @@ export function SubmissionForm({
           onBlur={() => handleBlur('abstract')}
           aria-invalid={!!errors.abstract}
           className="min-h-40 font-serif"
+          disabled={fieldsDisabled}
         />
         {errors.abstract && (
           <p className="text-sm text-destructive">{errors.abstract}</p>
@@ -375,6 +454,7 @@ export function SubmissionForm({
                 onClick={() => removeKeyword(index)}
                 className="ml-1 rounded-full p-0.5 hover:bg-muted"
                 aria-label={`Remove keyword ${keyword}`}
+                disabled={fieldsDisabled}
               >
                 <XIcon className="size-3" />
               </button>
@@ -393,13 +473,16 @@ export function SubmissionForm({
               handleBlur('keywords')
             }}
             aria-invalid={!!errors.keywords}
+            disabled={fieldsDisabled}
           />
           <Button
             type="button"
             variant="outline"
             size="default"
             onClick={addKeyword}
-            disabled={!keywordInput.trim() || keywords.length >= 10}
+            disabled={
+              fieldsDisabled || !keywordInput.trim() || keywords.length >= 10
+            }
           >
             Add
           </Button>
@@ -409,27 +492,8 @@ export function SubmissionForm({
         )}
       </div>
 
-      {/* PDF Upload */}
-      <div className="space-y-2" aria-invalid={!!errors.pdf || undefined}>
-        <Label>PDF Upload</Label>
-        <PdfUpload
-          onUploadComplete={(info) => {
-            setPdfInfo(info)
-            setErrors((prev) => {
-              const next = { ...prev }
-              delete next.pdf
-              return next
-            })
-          }}
-          onRemove={() => setPdfInfo(null)}
-          uploadedFile={
-            pdfInfo
-              ? { fileName: pdfInfo.fileName, fileSize: pdfInfo.fileSize }
-              : null
-          }
-          error={errors.pdf}
-        />
-      </div>
+      {/* Pre-Submission Check */}
+      <PreCheckDisplay checkRunId={checkRunId} />
 
       {/* Actions */}
       <div className="flex gap-3">

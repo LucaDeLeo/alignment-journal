@@ -216,6 +216,63 @@ export default defineSchema({
     createdAt: v.number(),
   }).index('by_recipientId', ['recipientId']),
 
+  preCheckReports: defineTable({
+    userId: v.id('users'),
+    pdfStorageId: v.id('_storage'),
+    checkRunId: v.string(),
+    passName: v.union(
+      v.literal('scope'),
+      v.literal('formatting'),
+      v.literal('citations'),
+      v.literal('claims'),
+    ),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('running'),
+      v.literal('complete'),
+      v.literal('failed'),
+    ),
+    result: v.optional(
+      v.object({
+        feedback: v.string(),
+        status: v.union(
+          v.literal('good'),
+          v.literal('needs_attention'),
+          v.literal('concern'),
+        ),
+        suggestion: v.string(),
+      }),
+    ),
+    lastError: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index('by_checkRunId', ['checkRunId'])
+    .index('by_userId_pdfStorageId', ['userId', 'pdfStorageId']),
+
+  pdfMetadata: defineTable({
+    userId: v.id('users'),
+    pdfStorageId: v.id('_storage'),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('running'),
+      v.literal('complete'),
+      v.literal('failed'),
+    ),
+    result: v.optional(
+      v.object({
+        title: v.string(),
+        authors: v.array(
+          v.object({ name: v.string(), affiliation: v.string() }),
+        ),
+        abstract: v.string(),
+        keywords: v.array(v.string()),
+      }),
+    ),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index('by_userId_pdfStorageId', ['userId', 'pdfStorageId']),
+
   payments: defineTable({
     submissionId: v.id('submissions'),
     reviewerId: v.id('users'),
