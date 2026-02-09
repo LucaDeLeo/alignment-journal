@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
+import {
+  buildCandidateDescription,
+  buildPaperContext,
+  buildRationaleSummary,
+  computeFallbackMatch,
+  mapTierToConfidence,
+} from '../matchingActions'
+
 // We test the pure utility functions from matching.ts
 // Since these are module-private, we replicate them here for testing.
 // The actual module uses these same implementations.
@@ -225,5 +233,269 @@ describe('generateFallbackRationale', () => {
       ['AI Safety Research'],
     )
     expect(result).toContain('aligns with')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// New exported pure functions from matchingActions.ts
+// ---------------------------------------------------------------------------
+
+describe('buildPaperContext', () => {
+  it('formats title, abstract, and keywords with newlines', () => {
+    const result = buildPaperContext({
+      title: 'Corrigibility',
+      abstract: 'A study on corrigible agents.',
+      keywords: ['alignment', 'safety'],
+    })
+    expect(result).toContain('Title: Corrigibility')
+    expect(result).toContain('Abstract: A study on corrigible agents.')
+    expect(result).toContain('Keywords: alignment, safety')
+  })
+
+  it('truncates text exceeding 8000 characters', () => {
+    const longAbstract = 'x'.repeat(9000)
+    const result = buildPaperContext({
+      title: 'T',
+      abstract: longAbstract,
+      keywords: ['k'],
+    })
+    expect(result.length).toBe(8000)
+  })
+
+  it('handles empty keywords', () => {
+    const result = buildPaperContext({
+      title: 'Test',
+      abstract: 'Abstract',
+      keywords: [],
+    })
+    expect(result).toContain('Keywords: ')
+  })
+})
+
+describe('buildCandidateDescription', () => {
+  const baseCandidate = {
+    reviewerName: 'Dr. Test',
+    affiliation: 'MIT',
+    researchAreas: ['alignment', 'safety'],
+    publicationTitles: ['Paper A', 'Paper B'],
+  }
+
+  it('includes index, name, affiliation, areas, and publications', () => {
+    const result = buildCandidateDescription(1, baseCandidate)
+    expect(result).toContain('1. Dr. Test (MIT)')
+    expect(result).toContain('Research areas: alignment, safety')
+    expect(result).toContain('Publications: Paper A; Paper B')
+  })
+
+  it('includes bio when provided', () => {
+    const result = buildCandidateDescription(1, {
+      ...baseCandidate,
+      bio: 'Specialist in alignment research.',
+    })
+    expect(result).toContain('Bio: Specialist in alignment research.')
+  })
+
+  it('omits bio line when not provided', () => {
+    const result = buildCandidateDescription(1, baseCandidate)
+    expect(result).not.toContain('Bio:')
+  })
+
+  it('includes primary and secondary expertise levels', () => {
+    const result = buildCandidateDescription(1, {
+      ...baseCandidate,
+      expertiseLevels: [
+        { area: 'alignment', level: 'primary' },
+        { area: 'safety', level: 'secondary' },
+        { area: 'ethics', level: 'familiar' },
+      ],
+    })
+    expect(result).toContain('Primary expertise: alignment')
+    expect(result).toContain('Secondary expertise: safety')
+    expect(result).not.toContain('familiar')
+    expect(result).not.toContain('ethics')
+  })
+
+  it('includes education when provided', () => {
+    const result = buildCandidateDescription(1, {
+      ...baseCandidate,
+      education: [
+        {
+          institution: 'MIT',
+          degree: 'PhD',
+          field: 'Computer Science',
+          yearCompleted: 2020,
+        },
+      ],
+    })
+    expect(result).toContain('Education: PhD in Computer Science from MIT (2020)')
+  })
+
+  it('omits year when not provided in education', () => {
+    const result = buildCandidateDescription(1, {
+      ...baseCandidate,
+      education: [
+        {
+          institution: 'MIT',
+          degree: 'PhD',
+          field: 'CS',
+        },
+      ],
+    })
+    expect(result).toContain('Education: PhD in CS from MIT')
+    // The education entry should not contain a year in parentheses
+    expect(result).not.toMatch(/Education:.*\(\d{4}\)/)
+  })
+
+  it('includes preferred topics when provided', () => {
+    const result = buildCandidateDescription(1, {
+      ...baseCandidate,
+      preferredTopics: ['alignment', 'corrigibility'],
+    })
+    expect(result).toContain('Preferred review topics: alignment, corrigibility')
+  })
+})
+
+describe('mapTierToConfidence', () => {
+  it('maps great tier at score 100 to near 1.0', () => {
+    const result = mapTierToConfidence('great', 100)
+    expect(result).toBe(1.0)
+  })
+
+  it('maps great tier at score 0 to 0.7', () => {
+    const result = mapTierToConfidence('great', 0)
+    expect(result).toBe(0.7)
+  })
+
+  it('maps good tier at score 100 to 0.69', () => {
+    const result = mapTierToConfidence('good', 100)
+    expect(result).toBe(0.69)
+  })
+
+  it('maps good tier at score 0 to 0.4', () => {
+    const result = mapTierToConfidence('good', 0)
+    expect(result).toBe(0.4)
+  })
+
+  it('maps exploring tier at score 100 to 0.39', () => {
+    const result = mapTierToConfidence('exploring', 100)
+    expect(result).toBe(0.39)
+  })
+
+  it('maps exploring tier at score 0 to 0.1', () => {
+    const result = mapTierToConfidence('exploring', 0)
+    expect(result).toBe(0.1)
+  })
+
+  it('clamps scores above 100', () => {
+    const result = mapTierToConfidence('great', 150)
+    expect(result).toBe(1.0)
+  })
+
+  it('clamps scores below 0', () => {
+    const result = mapTierToConfidence('great', -50)
+    expect(result).toBe(0.7)
+  })
+})
+
+describe('buildRationaleSummary', () => {
+  it('returns default message for empty strengths', () => {
+    const result = buildRationaleSummary([])
+    expect(result).toBe('Reviewer profile assessed for potential match.')
+  })
+
+  it('returns the single strength for a one-item array', () => {
+    const result = buildRationaleSummary(['Deep expertise in alignment.'])
+    expect(result).toBe('Deep expertise in alignment.')
+  })
+
+  it('joins multiple strengths with spaces', () => {
+    const result = buildRationaleSummary([
+      'Strong in alignment.',
+      'Published on corrigibility.',
+      'Good methodology background.',
+    ])
+    expect(result).toBe(
+      'Strong in alignment. Published on corrigibility. Good methodology background.',
+    )
+  })
+
+  it('joins exactly two strengths', () => {
+    const result = buildRationaleSummary(['A.', 'B.'])
+    expect(result).toBe('A. B.')
+  })
+})
+
+describe('computeFallbackMatch', () => {
+  it('returns great tier for high keyword overlap (>= 60%)', () => {
+    const result = computeFallbackMatch(
+      ['alignment', 'safety', 'corrigibility'],
+      { researchAreas: ['alignment', 'safety', 'corrigibility', 'ethics'] },
+    )
+    expect(result.tier).toBe('great')
+    expect(result.score).toBeGreaterThanOrEqual(60)
+  })
+
+  it('returns good tier for moderate overlap (30-59%)', () => {
+    const result = computeFallbackMatch(
+      ['alignment', 'safety', 'corrigibility', 'RLHF', 'oversight'],
+      { researchAreas: ['alignment', 'safety'] },
+    )
+    expect(result.tier).toBe('good')
+    expect(result.score).toBeGreaterThanOrEqual(30)
+    expect(result.score).toBeLessThan(60)
+  })
+
+  it('returns exploring tier for low overlap (< 30%)', () => {
+    const result = computeFallbackMatch(
+      ['quantum computing', 'physics', 'simulation', 'hardware'],
+      { researchAreas: ['AI safety', 'alignment'] },
+    )
+    expect(result.tier).toBe('exploring')
+    expect(result.score).toBeLessThan(30)
+  })
+
+  it('considers preferredTopics in overlap calculation', () => {
+    const result = computeFallbackMatch(
+      ['alignment', 'safety', 'corrigibility'],
+      {
+        researchAreas: ['unrelated field'],
+        preferredTopics: ['alignment', 'safety', 'corrigibility'],
+      },
+    )
+    expect(result.tier).toBe('great')
+  })
+
+  it('returns strengths array with overlap description', () => {
+    const result = computeFallbackMatch(
+      ['alignment'],
+      { researchAreas: ['alignment', 'safety'] },
+    )
+    expect(result.strengths.length).toBeGreaterThan(0)
+    expect(result.strengths[0]).toContain('alignment')
+  })
+
+  it('returns fallback gapAnalysis', () => {
+    const result = computeFallbackMatch(
+      ['alignment'],
+      { researchAreas: ['alignment'] },
+    )
+    expect(result.gapAnalysis).toContain('Fallback scoring')
+  })
+
+  it('handles empty keywords', () => {
+    const result = computeFallbackMatch([], {
+      researchAreas: ['alignment'],
+    })
+    expect(result.tier).toBe('exploring')
+    expect(result.score).toBe(0)
+  })
+
+  it('handles empty research areas', () => {
+    const result = computeFallbackMatch(
+      ['alignment'],
+      { researchAreas: [] },
+    )
+    expect(result.tier).toBe('exploring')
+    expect(result.score).toBe(0)
   })
 })

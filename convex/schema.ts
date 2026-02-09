@@ -92,6 +92,32 @@ export default defineSchema({
     ),
     // Deprecated: kept optional for backwards-compatibility with existing data
     embedding: v.optional(v.array(v.float64())),
+    expertiseLevels: v.optional(
+      v.array(
+        v.object({
+          area: v.string(),
+          level: v.union(
+            v.literal('primary'),
+            v.literal('secondary'),
+            v.literal('familiar'),
+          ),
+        }),
+      ),
+    ),
+    education: v.optional(
+      v.array(
+        v.object({
+          institution: v.string(),
+          degree: v.string(),
+          field: v.string(),
+          yearCompleted: v.optional(v.number()),
+        }),
+      ),
+    ),
+    bio: v.optional(v.string()),
+    preferredTopics: v.optional(v.array(v.string())),
+    isAvailable: v.optional(v.boolean()),
+    maxConcurrentReviews: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('by_userId', ['userId']),
@@ -171,7 +197,30 @@ export default defineSchema({
         publicationTitles: v.array(v.string()),
         rationale: v.string(),
         confidence: v.float64(),
+        tier: v.optional(
+          v.union(
+            v.literal('great'),
+            v.literal('good'),
+            v.literal('exploring'),
+          ),
+        ),
+        score: v.optional(v.float64()),
+        strengths: v.optional(v.array(v.string())),
+        gapAnalysis: v.optional(v.string()),
+        recommendations: v.optional(v.array(v.string())),
       }),
+    ),
+    editorialNotes: v.optional(v.array(v.string())),
+    suggestedCombination: v.optional(v.array(v.number())),
+    modelVersion: v.optional(v.string()),
+    computedAt: v.optional(v.number()),
+    matchInteractions: v.optional(
+      v.array(
+        v.object({
+          profileId: v.id('reviewerProfiles'),
+          state: v.union(v.literal('saved'), v.literal('dismissed')),
+        }),
+      ),
     ),
     error: v.optional(v.string()),
     createdAt: v.number(),

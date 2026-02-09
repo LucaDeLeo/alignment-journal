@@ -126,4 +126,77 @@ describe('buildReviewerProfiles', () => {
     const unique = new Set(firstAreas)
     expect(unique.size).toBe(5)
   })
+
+  it('4 of 5 profiles have enriched fields (bio, expertiseLevels, preferredTopics, education)', () => {
+    const enriched = profiles.filter(
+      (p) =>
+        'bio' in p &&
+        'expertiseLevels' in p &&
+        'preferredTopics' in p &&
+        'education' in p,
+    )
+    expect(enriched).toHaveLength(4)
+  })
+
+  it('profile at index 2 (mechanistic interpretability) has no enriched fields', () => {
+    const profile = profiles[2]
+    expect(profile.researchAreas).toContain('mechanistic interpretability')
+    expect('bio' in profile).toBe(false)
+    expect('expertiseLevels' in profile).toBe(false)
+    expect('preferredTopics' in profile).toBe(false)
+    expect('education' in profile).toBe(false)
+  })
+
+  it('one profile has isAvailable set to false', () => {
+    const unavailable = profiles.filter(
+      (p) => 'isAvailable' in p && p.isAvailable === false,
+    )
+    expect(unavailable).toHaveLength(1)
+  })
+
+  it('enriched profiles have bio under 500 chars', () => {
+    for (const profile of profiles) {
+      if ('bio' in profile && typeof profile.bio === 'string') {
+        expect(profile.bio.length).toBeLessThanOrEqual(500)
+      }
+    }
+  })
+
+  it('enriched profiles have expertise levels matching their research areas', () => {
+    for (const profile of profiles) {
+      if (
+        'expertiseLevels' in profile &&
+        Array.isArray(profile.expertiseLevels)
+      ) {
+        for (const exp of profile.expertiseLevels) {
+          expect(profile.researchAreas).toContain(exp.area)
+        }
+      }
+    }
+  })
+
+  it('enriched profiles have preferredTopics with 4-5 items', () => {
+    for (const profile of profiles) {
+      if (
+        'preferredTopics' in profile &&
+        Array.isArray(profile.preferredTopics)
+      ) {
+        expect(profile.preferredTopics.length).toBeGreaterThanOrEqual(4)
+        expect(profile.preferredTopics.length).toBeLessThanOrEqual(5)
+      }
+    }
+  })
+
+  it('enriched profiles have at least one education entry', () => {
+    for (const profile of profiles) {
+      if ('education' in profile && Array.isArray(profile.education)) {
+        expect(profile.education.length).toBeGreaterThanOrEqual(1)
+        for (const edu of profile.education) {
+          expect(edu.institution).toBeTruthy()
+          expect(edu.degree).toBeTruthy()
+          expect(edu.field).toBeTruthy()
+        }
+      }
+    }
+  })
 })

@@ -56,6 +56,12 @@ export function ReviewerPool() {
           userId: profileByUserId.userId,
           researchAreas: profileByUserId.researchAreas,
           publications: profileByUserId.publications,
+          expertiseLevels: profileByUserId.expertiseLevels,
+          education: profileByUserId.education,
+          bio: profileByUserId.bio,
+          preferredTopics: profileByUserId.preferredTopics,
+          isAvailable: profileByUserId.isAvailable,
+          maxConcurrentReviews: profileByUserId.maxConcurrentReviews,
         }
       : undefined
 
@@ -108,7 +114,9 @@ export function ReviewerPool() {
               <TableHead>Name</TableHead>
               <TableHead>Affiliation</TableHead>
               <TableHead>Research Areas</TableHead>
+              <TableHead>Bio</TableHead>
               <TableHead className="text-right">Publications</TableHead>
+              <TableHead className="text-center">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -122,7 +130,7 @@ export function ReviewerPool() {
                   {profile.userName}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {profile.userAffiliation || '—'}
+                  {profile.userAffiliation || '\u2014'}
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
@@ -133,8 +141,26 @@ export function ReviewerPool() {
                     ))}
                   </div>
                 </TableCell>
+                <TableCell className="max-w-48 text-sm text-muted-foreground">
+                  {profile.bio ? (
+                    <span className="line-clamp-2">{profile.bio}</span>
+                  ) : (
+                    <span className="text-muted-foreground/50">\u2014</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">
                   {profile.publicationCount}
+                </TableCell>
+                <TableCell className="text-center">
+                  {profile.isAvailable === false ? (
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                      Unavailable
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs text-green-700">
+                      Available
+                    </Badge>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

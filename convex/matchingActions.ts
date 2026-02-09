@@ -6,7 +6,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 
-import { action } from './_generated/server'
+import { action, internalAction } from './_generated/server'
 import { internal } from './_generated/api'
 import { withUser } from './helpers/auth'
 import { unauthorizedError } from './helpers/errors'
@@ -15,14 +15,226 @@ import { hasEditorRole } from './helpers/roles'
 import type { Doc } from './_generated/dataModel'
 import type { ActionCtx } from './_generated/server'
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
-/**
- * Sanitizes an error message for client display.
- * Strips raw API error details, keeps only a safe summary.
- */
+const BATCH_SIZE = 15
+const MAX_MATCHES = 15
+const MAX_ATTEMPTS = 3
+const MODEL_ID = 'claude-haiku-4-5-20251001'
+const MAX_PAPER_TEXT_LENGTH = 8000
+const DEFAULT_MAX_CONCURRENT = 3
+
+// ---------------------------------------------------------------------------
+// Zod schemas
+// ---------------------------------------------------------------------------
+
+/** Per-batch evaluation schema (LLM structured output). */
+const batchEvaluationSchema = z.object({
+  evaluations: z.array(
+    z.object({
+      candidateIndex: z.number().int().min(1),
+      tier: z.enum(['great', 'good', 'exploring']),
+      score: z.number().min(0).max(100),
+      strengths: z
+        .array(z.string())
+        .min(2)
+        .max(4),
+      gapAnalysis: z.string(),
+      recommendations: z
+        .array(z.string())
+        .min(1)
+        .max(2),
+    }),
+  ),
+})
+
+/** Editorial notes schema (final aggregation call). */
+const editorialNotesSchema = z.object({
+  notes: z
+    .array(z.string())
+    .min(3)
+    .max(5),
+  suggestedCombination: z.array(z.number().int().min(1)),
+})
+
+// ---------------------------------------------------------------------------
+// Pure functions (exported for testing)
+// ---------------------------------------------------------------------------
+
+/** Format submission context for the LLM prompt. */
+export function buildPaperContext(submission: {
+  title: string
+  abstract: string
+  keywords: Array<string>
+}): string {
+  const text = `Title: ${submission.title}\nAbstract: ${submission.abstract}\nKeywords: ${submission.keywords.join(', ')}`
+  if (text.length > MAX_PAPER_TEXT_LENGTH) {
+    return text.slice(0, MAX_PAPER_TEXT_LENGTH)
+  }
+  return text
+}
+
+/** Format a single candidate's description for the LLM prompt. */
+export function buildCandidateDescription(
+  index: number,
+  candidate: {
+    reviewerName: string
+    affiliation: string
+    researchAreas: Array<string>
+    publicationTitles: Array<string>
+    bio?: string
+    expertiseLevels?: Array<{ area: string; level: string }>
+    education?: Array<{
+      institution: string
+      degree: string
+      field: string
+      yearCompleted?: number
+    }>
+    preferredTopics?: Array<string>
+  },
+): string {
+  const lines: Array<string> = [
+    `${index}. ${candidate.reviewerName} (${candidate.affiliation})`,
+    `   Research areas: ${candidate.researchAreas.join(', ')}`,
+    `   Publications: ${candidate.publicationTitles.join('; ')}`,
+  ]
+
+  if (candidate.bio) {
+    lines.push(`   Bio: ${candidate.bio}`)
+  }
+
+  if (candidate.expertiseLevels && candidate.expertiseLevels.length > 0) {
+    const primary = candidate.expertiseLevels
+      .filter((e) => e.level === 'primary')
+      .map((e) => e.area)
+    const secondary = candidate.expertiseLevels
+      .filter((e) => e.level === 'secondary')
+      .map((e) => e.area)
+    if (primary.length > 0) {
+      lines.push(`   Primary expertise: ${primary.join(', ')}`)
+    }
+    if (secondary.length > 0) {
+      lines.push(`   Secondary expertise: ${secondary.join(', ')}`)
+    }
+  }
+
+  if (candidate.education && candidate.education.length > 0) {
+    const eduStr = candidate.education
+      .map(
+        (e) =>
+          `${e.degree} in ${e.field} from ${e.institution}${e.yearCompleted ? ` (${e.yearCompleted})` : ''}`,
+      )
+      .join('; ')
+    lines.push(`   Education: ${eduStr}`)
+  }
+
+  if (candidate.preferredTopics && candidate.preferredTopics.length > 0) {
+    lines.push(
+      `   Preferred review topics: ${candidate.preferredTopics.join(', ')}`,
+    )
+  }
+
+  return lines.join('\n')
+}
+
+/** Convert tier+score to legacy 0-1 confidence value. */
+export function mapTierToConfidence(
+  tier: 'great' | 'good' | 'exploring',
+  score: number,
+): number {
+  const clampedScore = Math.max(0, Math.min(100, score))
+  switch (tier) {
+    case 'great':
+      // Map 70-100 score to 0.7-1.0 confidence
+      return 0.7 + (clampedScore / 100) * 0.3
+    case 'good':
+      // Map 40-69 score to 0.4-0.69 confidence
+      return 0.4 + (clampedScore / 100) * 0.29
+    case 'exploring':
+      // Map 0-39 score to 0.1-0.39 confidence
+      return 0.1 + (clampedScore / 100) * 0.29
+  }
+}
+
+/** Convert strengths array to a single legacy rationale string. */
+export function buildRationaleSummary(strengths: Array<string>): string {
+  if (strengths.length === 0) {
+    return 'Reviewer profile assessed for potential match.'
+  }
+  if (strengths.length === 1) {
+    return strengths[0]
+  }
+  return strengths.join(' ')
+}
+
+/** Keyword-overlap fallback scoring per candidate (when LLM fails). */
+export function computeFallbackMatch(
+  keywords: Array<string>,
+  reviewer: {
+    researchAreas: Array<string>
+    preferredTopics?: Array<string>
+  },
+): {
+  tier: 'great' | 'good' | 'exploring'
+  score: number
+  strengths: Array<string>
+  gapAnalysis: string
+} {
+  const normalizedKeywords = keywords.map((k) => k.toLowerCase())
+  const allAreas = [
+    ...reviewer.researchAreas,
+    ...(reviewer.preferredTopics ?? []),
+  ]
+  const normalizedAreas = allAreas.map((a) => a.toLowerCase())
+
+  const overlapping = normalizedAreas.filter((area) =>
+    normalizedKeywords.some((kw) => area.includes(kw) || kw.includes(area)),
+  )
+
+  const overlapRatio =
+    normalizedKeywords.length > 0
+      ? overlapping.length / normalizedKeywords.length
+      : 0
+
+  let tier: 'great' | 'good' | 'exploring'
+  let score: number
+
+  if (overlapRatio >= 0.6) {
+    tier = 'great'
+    score = Math.round(overlapRatio * 100)
+  } else if (overlapRatio >= 0.3) {
+    tier = 'good'
+    score = Math.round(overlapRatio * 100)
+  } else {
+    tier = 'exploring'
+    score = Math.round(overlapRatio * 100)
+  }
+
+  const strengths =
+    overlapping.length > 0
+      ? [
+          `Expertise in ${overlapping.join(', ')} aligns with this paper's research focus.`,
+        ]
+      : [
+          `Research profile in ${reviewer.researchAreas.slice(0, 3).join(', ')} may provide relevant perspective.`,
+        ]
+
+  const gapAnalysis =
+    overlapping.length > 0
+      ? 'Fallback scoring — detailed gap analysis not available.'
+      : 'Limited keyword overlap detected. LLM evaluation was not available.'
+
+  return { tier, score, strengths, gapAnalysis }
+}
+
+// ---------------------------------------------------------------------------
+// Error sanitization
+// ---------------------------------------------------------------------------
+
 function sanitizeErrorMessage(error: unknown): string {
   if (error instanceof Error) {
-    // Strip out API keys, URLs, and raw response bodies
     const msg = error.message
     if (msg.includes('API key') || msg.includes('api_key')) {
       return 'External service authentication error'
@@ -33,7 +245,6 @@ function sanitizeErrorMessage(error: unknown): string {
     if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) {
       return 'External service timeout. Please try again.'
     }
-    // Generic sanitization: cap length and remove potential sensitive data
     return msg.length > 200
       ? 'An error occurred during reviewer matching'
       : msg.replace(/https?:\/\/[^\s]+/g, '[url]')
@@ -41,45 +252,345 @@ function sanitizeErrorMessage(error: unknown): string {
   return 'An unexpected error occurred during reviewer matching'
 }
 
-/**
- * Generates fallback rationale from keyword overlap when LLM call fails.
- */
-function generateFallbackRationale(
-  submissionKeywords: Array<string>,
-  reviewerAreas: Array<string>,
-): string {
-  const normalizedKeywords = submissionKeywords.map((k) => k.toLowerCase())
-  const normalizedAreas = reviewerAreas.map((a) => a.toLowerCase())
-  const overlapping = normalizedAreas.filter(
-    (area) =>
-      normalizedKeywords.some(
-        (kw) => area.includes(kw) || kw.includes(area),
-      ),
-  )
-  if (overlapping.length > 0) {
-    return `Expertise in ${overlapping.join(', ')} aligns with this paper's research focus.`
-  }
-  return `Research profile in ${reviewerAreas.slice(0, 3).join(', ')} may provide relevant perspective.`
-}
-
 // ---------------------------------------------------------------------------
-// Reviewer matching action
+// System prompts
 // ---------------------------------------------------------------------------
 
-/** Zod schema for structured LLM rationale output. */
-const rationaleSchema = z.object({
-  matches: z.array(
-    z.object({
-      index: z.number(),
-      rationale: z.string(),
-      confidence: z.number().min(0).max(1),
-    }),
-  ),
+const BATCH_SYSTEM_PROMPT = `You are an expert editorial advisor for the Alignment Journal, a peer-reviewed journal for theoretical AI alignment research.
+
+Evaluate each reviewer candidate for their suitability as a peer reviewer for the given paper.
+
+TIER DEFINITIONS:
+- "great": Deep expertise match. Reviewer has published in the paper's subfield, understands the methodology. Score: 70-100.
+- "good": Solid overlap. Works in a related area, can competently evaluate most aspects. Score: 40-69.
+- "exploring": Tangential expertise. Brings a useful but different perspective. May need pairing with a more expert reviewer. Score: 0-39.
+
+SCORING FACTORS (priority order):
+1. Primary expertise overlap with paper's core topic
+2. Publication track record in the area
+3. Reviewer's preferred review topics
+4. Secondary/complementary expertise
+5. Educational background relevance
+
+Be specific in strengths (cite publication titles when relevant).
+Be constructive in gap analysis (what aspects they cannot evaluate).`
+
+const EDITORIAL_SYSTEM_PROMPT = `You are an expert editorial advisor for the Alignment Journal.
+
+Given a set of ranked reviewer candidates for a paper, provide strategic editorial recommendations.
+
+Your notes should help the editor make a well-informed decision about which reviewers to invite. Consider:
+- Coverage of the paper's key aspects across the reviewer set
+- Complementary expertise combinations
+- Potential gaps that no single reviewer covers
+
+Suggest a combination of 2-3 reviewers from the list that would provide the most comprehensive review.`
+
+// ---------------------------------------------------------------------------
+// Matching pipeline (internal action with retry)
+// ---------------------------------------------------------------------------
+
+export const runMatchingPipeline = internalAction({
+  args: {
+    submissionId: v.id('submissions'),
+    attempt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    try {
+      // 1. Fetch submission
+      const submission = await ctx.runQuery(
+        internal.matching.getSubmissionInternal,
+        { submissionId: args.submissionId },
+      )
+
+      if (!submission) {
+        await ctx.runMutation(internal.matching.saveMatchResults, {
+          submissionId: args.submissionId,
+          status: 'failed',
+          matches: [],
+          error: 'Submission not found',
+        })
+        return null
+      }
+
+      // 2. Fetch all profiles (now includes enriched fields)
+      const allProfiles = await ctx.runQuery(
+        internal.matching.getAllProfilesInternal,
+      )
+
+      if (allProfiles.length === 0) {
+        await ctx.runMutation(internal.matching.saveMatchResults, {
+          submissionId: args.submissionId,
+          status: 'complete',
+          matches: [],
+          modelVersion: MODEL_ID,
+          computedAt: Date.now(),
+        })
+        return null
+      }
+
+      // 3. Pre-filter: skip unavailable and at-capacity reviewers
+      const activeReviewCounts = await ctx.runQuery(
+        internal.matching.getActiveReviewCounts,
+      )
+      const countMap = new Map(
+        activeReviewCounts.map((r) => [r.reviewerId, r.count]),
+      )
+
+      const availableProfiles = allProfiles.filter((profile) => {
+        // Skip explicitly unavailable
+        if (profile.isAvailable === false) return false
+        // Skip at-capacity
+        const maxConcurrent =
+          profile.maxConcurrentReviews ?? DEFAULT_MAX_CONCURRENT
+        const activeCount = countMap.get(profile.userId) ?? 0
+        return activeCount < maxConcurrent
+      })
+
+      if (availableProfiles.length === 0) {
+        await ctx.runMutation(internal.matching.saveMatchResults, {
+          submissionId: args.submissionId,
+          status: 'complete',
+          matches: [],
+          modelVersion: MODEL_ID,
+          computedAt: Date.now(),
+        })
+        return null
+      }
+
+      // 4. Resolve user data for each profile
+      const candidates: Array<{
+        profileId: Doc<'reviewerProfiles'>['_id']
+        userId: Doc<'users'>['_id']
+        reviewerName: string
+        affiliation: string
+        researchAreas: Array<string>
+        publicationTitles: Array<string>
+        bio?: string
+        expertiseLevels?: Array<{ area: string; level: string }>
+        education?: Array<{
+          institution: string
+          degree: string
+          field: string
+          yearCompleted?: number
+        }>
+        preferredTopics?: Array<string>
+      }> = []
+
+      for (const profile of availableProfiles) {
+        const user = await ctx.runQuery(internal.users.getByIdInternal, {
+          userId: profile.userId,
+        })
+        if (!user) continue
+
+        candidates.push({
+          profileId: profile._id,
+          userId: profile.userId,
+          reviewerName: user.name,
+          affiliation: user.affiliation,
+          researchAreas: profile.researchAreas,
+          publicationTitles: profile.publications.map((p) => p.title),
+          bio: profile.bio,
+          expertiseLevels: profile.expertiseLevels,
+          education: profile.education,
+          preferredTopics: profile.preferredTopics,
+        })
+      }
+
+      if (candidates.length === 0) {
+        await ctx.runMutation(internal.matching.saveMatchResults, {
+          submissionId: args.submissionId,
+          status: 'complete',
+          matches: [],
+          modelVersion: MODEL_ID,
+          computedAt: Date.now(),
+        })
+        return null
+      }
+
+      // 5. Build paper context
+      const paperContext = buildPaperContext(submission)
+
+      // 6. Split candidates into batches and evaluate
+      const allEvaluations: Array<{
+        candidateIdx: number
+        tier: 'great' | 'good' | 'exploring'
+        score: number
+        strengths: Array<string>
+        gapAnalysis: string
+        recommendations: Array<string>
+      }> = []
+
+      for (let batchStart = 0; batchStart < candidates.length; batchStart += BATCH_SIZE) {
+        const batch = candidates.slice(batchStart, batchStart + BATCH_SIZE)
+        const candidateDescriptions = batch
+          .map((c, i) =>
+            buildCandidateDescription(i + 1, c),
+          )
+          .join('\n\n')
+
+        try {
+          const { object } = await generateObject({
+            model: anthropic(MODEL_ID),
+            schema: batchEvaluationSchema,
+            system: BATCH_SYSTEM_PROMPT,
+            prompt: `Paper:\n${paperContext}\n\nReviewer Candidates:\n${candidateDescriptions}\n\nEvaluate all ${batch.length} candidates. Return one evaluation per candidate using their candidateIndex (1-based within this batch).`,
+          })
+
+          for (const evaluation of object.evaluations) {
+            const batchIdx = evaluation.candidateIndex - 1
+            if (batchIdx >= 0 && batchIdx < batch.length) {
+              allEvaluations.push({
+                candidateIdx: batchStart + batchIdx,
+                tier: evaluation.tier,
+                score: evaluation.score,
+                strengths: evaluation.strengths,
+                gapAnalysis: evaluation.gapAnalysis,
+                recommendations: evaluation.recommendations,
+              })
+            }
+          }
+        } catch (batchError) {
+          console.error(
+            `[matching] Batch ${batchStart}-${batchStart + batch.length} LLM failed, using fallback: ${
+              batchError instanceof Error ? batchError.message : 'Unknown error'
+            }`,
+          )
+          // Fallback: keyword-overlap scoring for this batch
+          for (let i = 0; i < batch.length; i++) {
+            const fallback = computeFallbackMatch(
+              submission.keywords,
+              batch[i],
+            )
+            allEvaluations.push({
+              candidateIdx: batchStart + i,
+              tier: fallback.tier,
+              score: fallback.score,
+              strengths: fallback.strengths,
+              gapAnalysis: fallback.gapAnalysis,
+              recommendations: [
+                'Fallback scoring applied — consider re-running matching.',
+              ],
+            })
+          }
+        }
+      }
+
+      // 7. Sort by tier (great > good > exploring) then score descending
+      const tierOrder = { great: 0, good: 1, exploring: 2 }
+      allEvaluations.sort((a, b) => {
+        const tierDiff = tierOrder[a.tier] - tierOrder[b.tier]
+        if (tierDiff !== 0) return tierDiff
+        return b.score - a.score
+      })
+
+      // 8. Take top MAX_MATCHES
+      const topEvaluations = allEvaluations.slice(0, MAX_MATCHES)
+
+      // 9. Editorial notes call (optional — failure doesn't block results)
+      let editorialNotes: Array<string> | undefined
+      let suggestedCombination: Array<number> | undefined
+
+      if (topEvaluations.length > 0) {
+        try {
+          const matchSummary = topEvaluations
+            .map((e, i) => {
+              const c = candidates[e.candidateIdx]
+              return `${i + 1}. ${c.reviewerName} — ${e.tier} match (score ${e.score}). Strengths: ${e.strengths.join('; ')}`
+            })
+            .join('\n')
+
+          const { object: notesResult } = await generateObject({
+            model: anthropic(MODEL_ID),
+            schema: editorialNotesSchema,
+            system: EDITORIAL_SYSTEM_PROMPT,
+            prompt: `Paper:\n${paperContext}\n\nTop Reviewer Matches:\n${matchSummary}\n\nProvide editorial recommendations and suggest the best combination of 2-3 reviewers (using their 1-based index from the list above).`,
+          })
+
+          editorialNotes = notesResult.notes
+          suggestedCombination = notesResult.suggestedCombination
+        } catch (notesError) {
+          console.error(
+            `[matching] Editorial notes call failed (non-blocking): ${
+              notesError instanceof Error ? notesError.message : 'Unknown error'
+            }`,
+          )
+        }
+      }
+
+      // 10. Build final match results with legacy fields
+      const finalMatches = topEvaluations.map((e) => {
+        const candidate = candidates[e.candidateIdx]
+        return {
+          profileId: candidate.profileId,
+          userId: candidate.userId,
+          reviewerName: candidate.reviewerName,
+          affiliation: candidate.affiliation,
+          researchAreas: candidate.researchAreas,
+          publicationTitles: candidate.publicationTitles,
+          rationale: buildRationaleSummary(e.strengths),
+          confidence: mapTierToConfidence(e.tier, e.score),
+          tier: e.tier,
+          score: Math.max(0, Math.min(100, e.score)),
+          strengths: e.strengths,
+          gapAnalysis: e.gapAnalysis,
+          recommendations: e.recommendations,
+        }
+      })
+
+      // 11. Save results
+      await ctx.runMutation(internal.matching.saveMatchResults, {
+        submissionId: args.submissionId,
+        status: 'complete',
+        matches: finalMatches,
+        editorialNotes,
+        suggestedCombination,
+        modelVersion: MODEL_ID,
+        computedAt: Date.now(),
+      })
+    } catch (error) {
+      console.error(
+        `[matching] Pipeline attempt ${args.attempt} failed for submission ${args.submissionId}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      )
+
+      // Retry with exponential backoff
+      if (args.attempt < MAX_ATTEMPTS) {
+        const delayMs = Math.pow(2, args.attempt) * 1000
+        await ctx.scheduler.runAfter(
+          delayMs,
+          internal.matchingActions.runMatchingPipeline,
+          {
+            submissionId: args.submissionId,
+            attempt: args.attempt + 1,
+          },
+        )
+      } else {
+        await ctx.runMutation(internal.matching.saveMatchResults, {
+          submissionId: args.submissionId,
+          status: 'failed',
+          matches: [],
+          error: sanitizeErrorMessage(error),
+          modelVersion: MODEL_ID,
+          computedAt: Date.now(),
+        })
+      }
+    }
+
+    return null
+  },
 })
 
+// ---------------------------------------------------------------------------
+// Public action (entry point)
+// ---------------------------------------------------------------------------
+
 /**
- * Finds top reviewer matches for a submission using vector search + LLM rationale.
- * Requires editor-level access. Results are persisted to matchResults table.
+ * Finds top reviewer matches for a submission using tiered LLM evaluation.
+ * Requires editor-level access. Sets status to 'running' and schedules
+ * the internal pipeline action.
  */
 export const findMatches = action({
   args: { submissionId: v.id('submissions') },
@@ -90,9 +601,7 @@ export const findMatches = action({
       args: { submissionId: Doc<'submissions'>['_id'] },
     ) => {
       // Authorization: editor-level access
-      if (
-        !hasEditorRole(ctx.user.role)
-      ) {
+      if (!hasEditorRole(ctx.user.role)) {
         throw unauthorizedError('Requires editor role')
       }
 
@@ -106,7 +615,8 @@ export const findMatches = action({
           submissionId: args.submissionId,
           status: 'failed',
           matches: [],
-          error: 'Anthropic API key is not configured. Please contact an administrator.',
+          error:
+            'Anthropic API key is not configured. Please contact an administrator.',
         })
         return null
       }
@@ -118,153 +628,15 @@ export const findMatches = action({
         matches: [],
       })
 
-      try {
-
-        // Read submission
-        const submission = await ctx.runQuery(
-          internal.matching.getSubmissionInternal,
-          { submissionId: args.submissionId },
-        )
-
-        if (!submission) {
-          await ctx.runMutation(internal.matching.saveMatchResults, {
-            submissionId: args.submissionId,
-            status: 'failed',
-            matches: [],
-            error: 'Submission not found',
-          })
-          return null
-        }
-
-        // Fetch all reviewer profiles for LLM-based matching
-        const allProfiles = await ctx.runQuery(
-          internal.matching.getAllProfilesInternal,
-        )
-
-        if (allProfiles.length === 0) {
-          await ctx.runMutation(internal.matching.saveMatchResults, {
-            submissionId: args.submissionId,
-            status: 'complete',
-            matches: [],
-          })
-          return null
-        }
-
-        // Resolve user data for each profile
-        const candidates: Array<{
-          profileId: Doc<'reviewerProfiles'>['_id']
-          userId: Doc<'users'>['_id']
-          reviewerName: string
-          affiliation: string
-          researchAreas: Array<string>
-          publicationTitles: Array<string>
-        }> = []
-
-        for (const profile of allProfiles) {
-          const user = await ctx.runQuery(internal.users.getByIdInternal, {
-            userId: profile.userId,
-          })
-          if (!user) continue
-
-          candidates.push({
-            profileId: profile._id,
-            userId: profile.userId,
-            reviewerName: user.name,
-            affiliation: user.affiliation,
-            researchAreas: profile.researchAreas,
-            publicationTitles: profile.publications.map((p) => p.title),
-          })
-        }
-
-        if (candidates.length === 0) {
-          await ctx.runMutation(internal.matching.saveMatchResults, {
-            submissionId: args.submissionId,
-            status: 'complete',
-            matches: [],
-          })
-          return null
-        }
-
-        // LLM-based matching: ask Haiku to rank and explain top 5
-        const candidateList = candidates
-          .map(
-            (m, i) =>
-              `${i + 1}. ${m.reviewerName} - Research areas: ${m.researchAreas.join(', ')}. Publications: ${m.publicationTitles.join('; ')}`,
-          )
-          .join('\n')
-
-        let rationaleResults: Array<{
-          index: number
-          rationale: string
-          confidence: number
-        }>
-
-        try {
-          const { object } = await generateObject({
-            model: anthropic('claude-haiku-4-5-20251001'),
-            schema: rationaleSchema,
-            prompt: `You are an academic journal editor assistant. Given a paper and a list of reviewer candidates, select the top 5 best matches and for each explain in 1-2 sentences why they are a good match. Focus on specific overlap between the reviewer's publications/research areas and the paper's topic. Assign a confidence score (0-1) where 1 means near-perfect expertise match. Return exactly the top 5 (or fewer if less than 5 candidates).
-
-Paper: ${submission.title} - ${submission.abstract}. Keywords: ${submission.keywords.join(', ')}
-
-Candidates:
-${candidateList}`,
-          })
-
-          rationaleResults = object.matches
-        } catch (llmError) {
-          console.error(
-            `[matching] LLM matching failed, using fallback: ${
-              llmError instanceof Error ? llmError.message : 'Unknown error'
-            }`,
-          )
-          // Fallback: keyword-overlap rationale for first 5
-          rationaleResults = candidates.slice(0, 5).map((m, i) => ({
-            index: i + 1,
-            rationale: generateFallbackRationale(
-              submission.keywords,
-              m.researchAreas,
-            ),
-            confidence: 0.5,
-          }))
-        }
-
-        // Build final match results from LLM selections
-        const finalMatches = rationaleResults
-          .filter((r) => r.index >= 1 && r.index <= candidates.length)
-          .map((r) => {
-            const candidate = candidates[r.index - 1]
-            return {
-              profileId: candidate.profileId,
-              userId: candidate.userId,
-              reviewerName: candidate.reviewerName,
-              affiliation: candidate.affiliation,
-              researchAreas: candidate.researchAreas,
-              publicationTitles: candidate.publicationTitles,
-              rationale: r.rationale,
-              confidence: Math.max(0, Math.min(1, r.confidence)),
-            }
-          })
-
-        // Save results
-        await ctx.runMutation(internal.matching.saveMatchResults, {
+      // Schedule the internal pipeline action
+      await ctx.scheduler.runAfter(
+        0,
+        internal.matchingActions.runMatchingPipeline,
+        {
           submissionId: args.submissionId,
-          status: 'complete',
-          matches: finalMatches,
-        })
-      } catch (error) {
-        console.error(
-          `[matching] Match pipeline failed for submission ${args.submissionId}: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`,
-        )
-        await ctx.runMutation(internal.matching.saveMatchResults, {
-          submissionId: args.submissionId,
-          status: 'failed',
-          matches: [],
-          error: sanitizeErrorMessage(error),
-        })
-      }
+          attempt: 1,
+        },
+      )
 
       return null
     },
