@@ -172,17 +172,12 @@ export const makeDecision = mutation({
       })
 
       // Log audit entry
-      const auditAction = decisionToActionString(args.decision)
-      const noteSnippet = args.decisionNote
-        ? args.decisionNote.slice(0, 100)
-        : undefined
-
       await ctx.scheduler.runAfter(0, internal.audit.logAction, {
         submissionId: args.submissionId,
         actorId: ctx.user._id,
         actorRole: ctx.user.role,
-        action: auditAction,
-        details: noteSnippet,
+        action: decisionToActionString(args.decision),
+        details: args.decisionNote,
       })
 
       return {

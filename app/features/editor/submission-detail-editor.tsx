@@ -21,6 +21,7 @@ import { DecisionPanel } from './decision-panel'
 import { PaymentSummaryTable } from './payment-summary-table'
 import { ReviewProgressIndicator } from './review-progress-indicator'
 import { ReviewerMatchPanel } from './reviewer-match-panel'
+import { NextStepBanner } from './next-step-banner'
 import { StatusTransitionChip } from './status-transition-chip'
 
 import type { Id } from '../../../convex/_generated/dataModel'
@@ -56,7 +57,8 @@ export function EditorSubmissionDetail({
   const isEditorInChief = currentUser?.role === 'editor_in_chief'
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="mx-auto max-w-3xl px-6 py-8 xl:max-w-none xl:grid xl:grid-cols-[minmax(0,48rem)_14rem] xl:justify-center xl:gap-8">
+      <div className="min-w-0">
       {/* Back link */}
       <Link
         to="/editor"
@@ -123,6 +125,17 @@ export function EditorSubmissionDetail({
         />
       </div>
 
+      <NextStepBanner
+        status={submission.status}
+        reviewsSubmitted={
+          reviewProgress?.filter(
+            (e) =>
+              e.reviewStatus === 'submitted' || e.reviewStatus === 'locked',
+          ).length
+        }
+        reviewsTotal={reviewProgress?.length}
+      />
+
       <Separator className="my-6" />
 
       {/* Abstract */}
@@ -178,7 +191,7 @@ export function EditorSubmissionDetail({
       {/* Reviewer Matching — only for matchable statuses */}
       {(submission.status === 'TRIAGE_COMPLETE' ||
         submission.status === 'UNDER_REVIEW') && (
-        <ReviewerMatchPanel submissionId={submissionId} />
+        <ReviewerMatchPanel submissionId={submissionId} submissionTitle={submission.title} />
       )}
 
       {/* Review Progress — only when reviews exist */}
@@ -226,7 +239,7 @@ export function EditorSubmissionDetail({
       )}
 
       {/* Pipeline Progress */}
-      <section className="mt-10">
+      <section className="mt-10 xl:hidden">
         <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Pipeline Progress
         </h2>
@@ -238,6 +251,16 @@ export function EditorSubmissionDetail({
 
       {/* Audit Trail */}
       <AuditTimeline submissionId={submissionId} />
+      </div>
+
+      <aside className="hidden xl:block">
+        <div className="sticky top-8">
+          <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Pipeline
+          </h3>
+          <StatusTimeline currentStatus={submission.status} />
+        </div>
+      </aside>
     </div>
   )
 }

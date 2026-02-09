@@ -28,7 +28,7 @@ const submissionFormSchema = z.object({
   authors: z.array(authorSchema).min(1, 'At least one author is required'),
   abstract: z
     .string()
-    .min(100, 'Abstract must be at least 100 characters')
+    .min(1, 'Abstract is required')
     .max(5000, 'Abstract must be under 5,000 characters'),
   keywords: z
     .array(

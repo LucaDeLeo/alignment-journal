@@ -8,7 +8,7 @@ import { hasEditorRole } from './helpers/roles'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 
-// Payment formula constants (exported for reuse in Story 6.2)
+// Payment formula constants (exported for tests and editor-facing queries)
 export const BASE_FLAT = 100
 export const PER_PAGE = 20
 export const SPEED_BONUS_PER_WEEK = 100
@@ -20,7 +20,7 @@ export const QUALITY_MULTIPLIERS = { standard: 1, excellent: 2 } as const
 export const DEFAULT_PAGE_COUNT = 15
 
 /** Rough bytes per page for PDF page estimation. */
-export const BYTES_PER_PAGE = 3000
+export const BYTES_PER_PAGE = 50000
 
 /** Input data for pure payment calculation. */
 export interface PaymentInput {
@@ -181,7 +181,7 @@ export const getPaymentBreakdown = query({
 
       // 5. Compute breakdown using pure function
       return computePaymentBreakdown({
-        pageCount: paymentRecord?.pageCount,
+        pageCount: paymentRecord?.pageCount ?? submission?.pageCount,
         pdfFileSize: submission?.pdfFileSize,
         qualityLevel: paymentRecord?.qualityLevel,
         qualityAssessed: paymentRecord !== undefined,
@@ -287,7 +287,7 @@ export const getPaymentSummary = query({
           )
 
           const breakdown = computePaymentBreakdown({
-            pageCount: paymentRecord?.pageCount,
+            pageCount: paymentRecord?.pageCount ?? submission?.pageCount,
             pdfFileSize: submission?.pdfFileSize,
             qualityLevel: paymentRecord?.qualityLevel,
             qualityAssessed: paymentRecord !== undefined,
@@ -383,7 +383,9 @@ export const setQualityLevel = mutation({
       } else {
         // Estimate page count from PDF file size or default
         let pageCount = DEFAULT_PAGE_COUNT
-        if (submission.pdfFileSize != null && submission.pdfFileSize > 0) {
+        if (submission.pageCount != null && submission.pageCount > 0) {
+          pageCount = submission.pageCount
+        } else if (submission.pdfFileSize != null && submission.pdfFileSize > 0) {
           pageCount = Math.max(
             1,
             Math.ceil(submission.pdfFileSize / BYTES_PER_PAGE),

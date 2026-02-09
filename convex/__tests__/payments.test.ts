@@ -71,7 +71,7 @@ describe('computePaymentBreakdown', () => {
     })
 
     it('estimates page count from PDF file size', () => {
-      const fileSize = 30000 // 10 pages
+      const fileSize = 500000 // 10 pages at 50000 bytes/page
       const result = computePaymentBreakdown(
         makeInput({ pdfFileSize: fileSize }),
       )

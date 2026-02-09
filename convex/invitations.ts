@@ -10,6 +10,7 @@ import {
   unauthorizedError,
   validationError,
 } from './helpers/errors'
+import { buildInvitationBody, resolveAcceptLink } from './helpers/invitation_template'
 import { hasEditorRole } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
@@ -28,28 +29,6 @@ async function hashToken(token: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-
-/**
- * Builds the notification email preview body for a reviewer invitation.
- */
-function buildNotificationBody(
-  title: string,
-  rationale: string,
-  reviewAssignmentId: string,
-): string {
-  return `You have been invited to review a paper for the Alignment Journal.
-
-Paper: ${title}
-
-Why you: ${rationale}
-
-Compensation: $500-$1,500 based on review quality and timeliness.
-Deadline: 4 weeks from acceptance.
-
-Accept this invitation: /review/accept/${reviewAssignmentId}
-
-If you are unable to review, please decline promptly so we can find an alternative reviewer.`
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +90,9 @@ export const sendInvitations = mutation({
     submissionId: v.id('submissions'),
     reviewerIds: v.array(v.id('users')),
     matchData: v.array(matchDataItemValidator),
+    customBodies: v.optional(
+      v.array(v.object({ userId: v.id('users'), body: v.string() })),
+    ),
   },
   returns: v.array(v.id('reviewInvites')),
   handler: withUser(
@@ -120,6 +102,7 @@ export const sendInvitations = mutation({
         submissionId: Id<'submissions'>
         reviewerIds: Array<Id<'users'>>
         matchData: Array<{ userId: Id<'users'>; rationale: string }>
+        customBodies?: Array<{ userId: Id<'users'>; body: string }>
       },
     ) => {
       // Authorization: editor-level access
@@ -199,12 +182,16 @@ export const sendInvitations = mutation({
           updatedAt: now,
         })
 
-        // Insert notifications record
-        const notificationBody = buildNotificationBody(
-          submission.title,
-          rationale,
-          reviewAssignmentId,
+        // Build notification body — use custom body if provided, else default template
+        const customEntry = args.customBodies?.find(
+          (c) => c.userId === reviewerId,
         )
+        const notificationBody = customEntry
+          ? resolveAcceptLink(customEntry.body, reviewAssignmentId)
+          : resolveAcceptLink(
+              buildInvitationBody(submission.title, rationale),
+              reviewAssignmentId,
+            )
 
         await ctx.db.insert('notifications', {
           recipientId: reviewerId,
@@ -225,7 +212,7 @@ export const sendInvitations = mutation({
           actorId: ctx.user._id,
           actorRole: ctx.user.role,
           action: 'reviewer_invited',
-          details: `Invited ${reviewerName}. Rationale: ${rationale.slice(0, 100)}`,
+          details: `Invited ${reviewerName}. Rationale: ${rationale}`,
         })
       }
 

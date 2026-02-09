@@ -14,6 +14,7 @@ import type * as decisions from "../decisions.js";
 import type * as discussions from "../discussions.js";
 import type * as helpers_auth from "../helpers/auth.js";
 import type * as helpers_errors from "../helpers/errors.js";
+import type * as helpers_invitation_template from "../helpers/invitation_template.js";
 import type * as helpers_roles from "../helpers/roles.js";
 import type * as helpers_transitions from "../helpers/transitions.js";
 import type * as invitations from "../invitations.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   discussions: typeof discussions;
   "helpers/auth": typeof helpers_auth;
   "helpers/errors": typeof helpers_errors;
+  "helpers/invitation_template": typeof helpers_invitation_template;
   "helpers/roles": typeof helpers_roles;
   "helpers/transitions": typeof helpers_transitions;
   invitations: typeof invitations;

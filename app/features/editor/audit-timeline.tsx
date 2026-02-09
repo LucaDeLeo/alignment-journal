@@ -35,7 +35,39 @@ interface AuditTimelineProps {
   submissionId: Id<'submissions'>
 }
 
+const DETAIL_PREVIEW_LENGTH = 120
+
+function ExpandableDetails({
+  text,
+  isExpanded,
+  onToggle,
+}: {
+  text: string
+  isExpanded: boolean
+  onToggle: () => void
+}) {
+  if (text.length <= DETAIL_PREVIEW_LENGTH) {
+    return (
+      <p className="text-sm text-muted-foreground">{text}</p>
+    )
+  }
+
+  return (
+    <div className="text-sm text-muted-foreground">
+      <p>{isExpanded ? text : `${text.slice(0, DETAIL_PREVIEW_LENGTH)}...`}</p>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="text-xs text-primary hover:underline"
+      >
+        {isExpanded ? 'Show less' : 'Show more'}
+      </button>
+    </div>
+  )
+}
+
 export function AuditTimeline({ submissionId }: AuditTimelineProps) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [actionFilter, setActionFilter] = useState<string | undefined>(
     undefined,
   )
@@ -116,9 +148,21 @@ export function AuditTimeline({ submissionId }: AuditTimelineProps) {
                 {formatActionLabel(entry.action)}
               </p>
               {entry.details && (
-                <p className="text-sm text-muted-foreground">
-                  {entry.details}
-                </p>
+                <ExpandableDetails
+                  text={entry.details}
+                  isExpanded={expandedIds.has(entry._id)}
+                  onToggle={() => {
+                    setExpandedIds((prev) => {
+                      const next = new Set(prev)
+                      if (next.has(entry._id)) {
+                        next.delete(entry._id)
+                      } else {
+                        next.add(entry._id)
+                      }
+                      return next
+                    })
+                  }}
+                />
               )}
               <time className="text-xs text-muted-foreground">
                 {formatDate(entry.createdAt)}

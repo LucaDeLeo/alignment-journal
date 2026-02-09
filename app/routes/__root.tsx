@@ -1,5 +1,6 @@
 import {
   HeadContent,
+  Link,
   Outlet,
   Scripts,
   createRootRouteWithContext,
@@ -24,7 +25,7 @@ import { SearchIcon } from 'lucide-react'
 import type { ConvexQueryClient } from '@convex-dev/react-query'
 import type { ConvexReactClient } from 'convex/react'
 import type { QueryClient } from '@tanstack/react-query'
-import { RoleBadge, RoleSwitcher, useBootstrappedUser } from '~/features/auth'
+import { RoleSwitcher, useBootstrappedUser } from '~/features/auth'
 import { Button } from '~/components/ui/button'
 import { Kbd } from '~/components/ui/kbd'
 import { Toaster } from '~/components/ui/sonner'
@@ -113,40 +114,107 @@ function RootComponent() {
 const showRoleSwitcher =
   import.meta.env.DEV || !!import.meta.env.VITE_SHOW_ROLE_SWITCHER
 
+/** Route navigation items with role-based access. `roles: null` means public. */
+const NAV_ITEMS: Array<{
+  to: string
+  label: string
+  roles: ReadonlyArray<string> | null
+}> = [
+  { to: '/submit', label: 'Submit', roles: ['author', 'admin'] },
+  { to: '/editor', label: 'Editor', roles: ['editor_in_chief', 'action_editor', 'admin'] },
+  { to: '/review', label: 'Review', roles: ['reviewer', 'admin'] },
+  { to: '/article', label: 'Articles', roles: null },
+  { to: '/admin', label: 'Admin', roles: ['admin', 'editor_in_chief'] },
+]
+
+/** Renders nav links, greying out routes inaccessible to the current role. */
+function NavLinks({ role }: { role: string | null | undefined }) {
+  return (
+    <>
+      {NAV_ITEMS.map((item) => {
+        const accessible =
+          item.roles === null || (role != null && item.roles.includes(role))
+
+        if (accessible) {
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="px-2.5 py-1.5 text-sm font-medium transition-colors"
+              activeProps={{ className: 'text-foreground' }}
+              inactiveProps={{
+                className: 'text-muted-foreground hover:text-foreground',
+              }}
+            >
+              {item.label}
+            </Link>
+          )
+        }
+
+        return (
+          <span
+            key={item.to}
+            className="px-2.5 py-1.5 text-sm font-medium text-muted-foreground/40"
+          >
+            {item.label}
+          </span>
+        )
+      })}
+    </>
+  )
+}
+
 /**
- * Bootstraps the Convex user record and renders role-aware header content.
+ * Bootstraps the Convex user record and renders role-aware nav + header controls.
  * Only rendered inside `<SignedIn>` so Clerk auth is guaranteed.
  */
 function AuthenticatedHeader() {
   const { user, isBootstrapped, bootstrapError } = useBootstrappedUser()
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
 
-  if (bootstrapError) {
-    return (
-      <>
-        <span className="text-xs text-destructive">
-          Failed to load user
-        </span>
-        <UserButton />
-      </>
-    )
-  }
-
   return (
     <>
-      {user && (
-        <>
-          <RoleBadge role={user.role} />
-          {showRoleSwitcher && <RoleSwitcher currentRole={user.role} />}
-        </>
-      )}
-      <CommandPaletteTrigger onToggle={() => setCommandPaletteOpen((prev) => !prev)} />
-      <CommandPalette
-        isBootstrapped={isBootstrapped}
-        open={commandPaletteOpen}
-        onOpenChange={setCommandPaletteOpen}
-      />
-      <UserButton />
+      <nav className="ml-6 hidden items-center gap-1 md:flex">
+        <NavLinks role={user?.role ?? null} />
+      </nav>
+      <div className="ml-auto flex items-center gap-4">
+        {bootstrapError ? (
+          <>
+            <span className="text-xs text-destructive">
+              Failed to load user
+            </span>
+            <UserButton />
+          </>
+        ) : (
+          <>
+            {user && showRoleSwitcher && (
+              <RoleSwitcher currentRole={user.role} />
+            )}
+            <CommandPaletteTrigger onToggle={() => setCommandPaletteOpen((prev) => !prev)} />
+            <CommandPalette
+              isBootstrapped={isBootstrapped}
+              open={commandPaletteOpen}
+              onOpenChange={setCommandPaletteOpen}
+            />
+            <UserButton />
+          </>
+        )}
+      </div>
+    </>
+  )
+}
+
+/** Nav + sign-in controls for unauthenticated users. */
+function UnauthenticatedHeader() {
+  return (
+    <>
+      <nav className="ml-6 hidden items-center gap-1 md:flex">
+        <NavLinks role={null} />
+      </nav>
+      <div className="ml-auto flex items-center gap-4">
+        <SignInAutoOpen />
+        <SignInButton mode="modal" />
+      </div>
     </>
   )
 }
@@ -211,19 +279,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <header className="border-b border-border bg-card">
-          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
-            <span className="text-lg font-semibold tracking-tight">
+          <div className="mx-auto flex h-14 max-w-7xl items-center px-6">
+            <Link
+              to="/"
+              className="shrink-0 text-lg font-semibold tracking-tight"
+            >
               Alignment Journal
-            </span>
-            <div className="flex items-center gap-4">
-              <SignedIn>
-                <AuthenticatedHeader />
-              </SignedIn>
-              <SignedOut>
-                <SignInAutoOpen />
-                <SignInButton mode="modal" />
-              </SignedOut>
-            </div>
+            </Link>
+            <SignedIn>
+              <AuthenticatedHeader />
+            </SignedIn>
+            <SignedOut>
+              <UnauthenticatedHeader />
+            </SignedOut>
           </div>
         </header>
         {children}

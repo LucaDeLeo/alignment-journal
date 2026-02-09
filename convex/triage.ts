@@ -311,6 +311,7 @@ export const writeAllResults = internalMutation({
       citations: triageResultValidator,
       claims: triageResultValidator,
     }),
+    pageCount: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -340,6 +341,7 @@ export const writeAllResults = internalMutation({
       assertTransition(submission.status, 'TRIAGE_COMPLETE')
       await ctx.db.patch('submissions', args.submissionId, {
         status: 'TRIAGE_COMPLETE',
+        pageCount: args.pageCount,
         updatedAt: now,
       })
     }

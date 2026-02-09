@@ -12,12 +12,45 @@ import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
 import { Skeleton } from '~/components/ui/skeleton'
 
+function MatchButtonContent({
+  isRunning,
+  hasExistingResults,
+}: {
+  isRunning: boolean
+  hasExistingResults: boolean
+}) {
+  if (isRunning) {
+    return (
+      <>
+        <RefreshCwIcon className="mr-1.5 size-3.5 animate-spin" />
+        Finding...
+      </>
+    )
+  }
+  if (hasExistingResults) {
+    return (
+      <>
+        <RefreshCwIcon className="mr-1.5 size-3.5" />
+        Re-run Matching
+      </>
+    )
+  }
+  return (
+    <>
+      <SearchIcon className="mr-1.5 size-3.5" />
+      Run Matching
+    </>
+  )
+}
+
 interface ReviewerMatchPanelProps {
   submissionId: Id<'submissions'>
+  submissionTitle: string
 }
 
 export function ReviewerMatchPanel({
   submissionId,
+  submissionTitle,
 }: ReviewerMatchPanelProps) {
   const matchResults = useQuery(api.matching.getMatchResults, {
     submissionId,
@@ -28,7 +61,7 @@ export function ReviewerMatchPanel({
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
   const [isTriggering, setIsTriggering] = useState(false)
 
-  const handleRunMatching = async () => {
+  async function handleRunMatching() {
     setIsTriggering(true)
     setSelectedIds(new Set())
     setDismissedIds(new Set())
@@ -41,7 +74,7 @@ export function ReviewerMatchPanel({
     }
   }
 
-  const handleSelect = (profileId: string) => {
+  function handleSelect(profileId: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(profileId)) {
@@ -59,7 +92,7 @@ export function ReviewerMatchPanel({
     })
   }
 
-  const handleDismiss = (profileId: string) => {
+  function handleDismiss(profileId: string) {
     setDismissedIds((prev) => {
       const next = new Set(prev)
       next.add(profileId)
@@ -111,7 +144,7 @@ export function ReviewerMatchPanel({
         }))
     : []
 
-  const handleInvitationsSent = () => {
+  function handleInvitationsSent() {
     setSelectedIds(new Set())
   }
 
@@ -129,22 +162,7 @@ export function ReviewerMatchPanel({
           disabled={isRunning}
           className="h-8"
         >
-          {isRunning ? (
-            <>
-              <RefreshCwIcon className="mr-1.5 size-3.5 animate-spin" />
-              Finding...
-            </>
-          ) : hasExistingResults ? (
-            <>
-              <RefreshCwIcon className="mr-1.5 size-3.5" />
-              Re-run Matching
-            </>
-          ) : (
-            <>
-              <SearchIcon className="mr-1.5 size-3.5" />
-              Run Matching
-            </>
-          )}
+          <MatchButtonContent isRunning={isRunning} hasExistingResults={hasExistingResults} />
         </Button>
       </div>
 
@@ -203,6 +221,7 @@ export function ReviewerMatchPanel({
           {/* Invitation panel */}
           <InvitationPanel
             submissionId={submissionId}
+            submissionTitle={submissionTitle}
             selectedReviewers={selectedReviewers}
             onInvitationsSent={handleInvitationsSent}
           />

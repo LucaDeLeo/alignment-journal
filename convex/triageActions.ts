@@ -112,7 +112,7 @@ export const runTriage = internalAction({
       if (!pdfUrl) throw new Error('PDF not found in storage')
       const pdfResponse = await fetch(pdfUrl)
       const pdfBuffer = await pdfResponse.arrayBuffer()
-      const { text: extractedText } = await extractText(
+      const { text: extractedText, totalPages } = await extractText(
         new Uint8Array(pdfBuffer),
         { mergePages: true },
       )
@@ -134,13 +134,17 @@ export const runTriage = internalAction({
             citations: emptyResult,
             claims: emptyResult,
           },
+          pageCount: 0,
         })
         return null
       }
 
       // 4. Truncate text, then run all 4 analyses sequentially
       const truncatedText = extractedText.slice(0, MAX_TEXT_LENGTH)
-      const results: Record<string, { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }> = {}
+      const results = {} as Record<
+        (typeof PASS_NAMES)[number],
+        z.infer<typeof triageResultSchema>
+      >
 
       for (const passName of PASS_NAMES) {
         const { object } = await generateObject({
@@ -156,12 +160,8 @@ export const runTriage = internalAction({
       await ctx.runMutation(internal.triage.writeAllResults, {
         submissionId: args.submissionId,
         triageRunId: args.triageRunId,
-        results: results as {
-          scope: { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }
-          formatting: { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }
-          citations: { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }
-          claims: { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }
-        },
+        results,
+        pageCount: totalPages,
       })
     } catch (error) {
       if (attempt < MAX_ATTEMPTS) {

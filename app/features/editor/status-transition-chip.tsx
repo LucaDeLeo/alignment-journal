@@ -74,12 +74,13 @@ export function StatusTransitionChip({
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={isPending}>
         <button
-          className="inline-flex items-center gap-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex items-center gap-1 rounded-md cursor-pointer hover:ring-2 hover:ring-ring/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           type="button"
+          title="Click to change status"
         >
-          <Badge className={STATUS_COLORS[currentStatus]}>
+          <Badge className={`${STATUS_COLORS[currentStatus]} px-3 py-1`}>
             {STATUS_LABELS[currentStatus]}
-            <ChevronDown className="ml-1 size-3" />
+            <ChevronDown className="ml-1 size-3.5" />
           </Badge>
         </button>
       </DropdownMenuTrigger>

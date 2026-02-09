@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import {
   MailIcon,
@@ -8,6 +8,8 @@ import {
 import { toast } from 'sonner'
 
 import { api } from '../../../convex/_generated/api'
+import { buildInvitationBody } from '../../../convex/helpers/invitation_template'
+import { InvitationPreviewModal } from './invitation-preview-modal'
 import { ReviewProgressIndicator } from './review-progress-indicator'
 
 import type { Id } from '../../../convex/_generated/dataModel'
@@ -26,12 +28,14 @@ interface SelectedReviewer {
 
 interface InvitationPanelProps {
   submissionId: Id<'submissions'>
+  submissionTitle: string
   selectedReviewers: Array<SelectedReviewer>
   onInvitationsSent: () => void
 }
 
 export function InvitationPanel({
   submissionId,
+  submissionTitle,
   selectedReviewers,
   onInvitationsSent,
 }: InvitationPanelProps) {
@@ -42,12 +46,32 @@ export function InvitationPanel({
   })
 
   const [isSending, setIsSending] = useState(false)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [draftBodies, setDraftBodies] = useState<Map<string, string>>(new Map())
 
-  const handleSend = async () => {
+  const reviewerDrafts = useMemo(
+    () =>
+      selectedReviewers.map((r) => ({
+        userId: r.userId,
+        reviewerName: r.reviewerName,
+        body:
+          draftBodies.get(r.userId) ??
+          buildInvitationBody(submissionTitle, r.rationale),
+        isEdited: draftBodies.has(r.userId),
+      })),
+    [selectedReviewers, draftBodies, submissionTitle],
+  )
+
+  async function handleConfirmSend() {
     if (selectedReviewers.length === 0) return
 
     setIsSending(true)
     try {
+      // Only pass customBodies for reviewers whose bodies were actually edited
+      const customBodies = reviewerDrafts
+        .filter((r) => r.isEdited)
+        .map((r) => ({ userId: r.userId, body: r.body }))
+
       const inviteIds = await sendInvitations({
         submissionId,
         reviewerIds: selectedReviewers.map((r) => r.userId),
@@ -55,6 +79,7 @@ export function InvitationPanel({
           userId: r.userId,
           rationale: r.rationale,
         })),
+        customBodies: customBodies.length > 0 ? customBodies : undefined,
       })
 
       // Show undo toast
@@ -78,6 +103,8 @@ export function InvitationPanel({
         },
       )
 
+      setDraftBodies(new Map())
+      setIsPreviewOpen(false)
       onInvitationsSent()
     } catch {
       toast.error('Failed to send invitations. Please try again.')
@@ -86,7 +113,7 @@ export function InvitationPanel({
     }
   }
 
-  const handleRevoke = async (inviteId: Id<'reviewInvites'>) => {
+  async function handleRevoke(inviteId: Id<'reviewInvites'>) {
     try {
       await revokeInvitation({ inviteId })
       toast.success('Invitation revoked.')
@@ -141,18 +168,12 @@ export function InvitationPanel({
             {/* Send button */}
             <Button
               size="sm"
-              onClick={handleSend}
+              onClick={() => setIsPreviewOpen(true)}
               disabled={isSending}
               className="w-full"
             >
-              {isSending ? (
-                'Sending...'
-              ) : (
-                <>
-                  <SendIcon className="mr-1.5 size-3.5" />
-                  Send Invitations
-                </>
-              )}
+              <SendIcon className="mr-1.5 size-3.5" />
+              Preview &amp; Send
             </Button>
           </CardContent>
         </Card>
@@ -201,6 +222,30 @@ export function InvitationPanel({
             </div>
           ))}
         </div>
+      )}
+      {/* Invitation preview modal */}
+      {hasSelectedReviewers && (
+        <InvitationPreviewModal
+          open={isPreviewOpen}
+          onOpenChange={setIsPreviewOpen}
+          reviewers={reviewerDrafts}
+          onBodyChange={(userId, body) => {
+            setDraftBodies((prev) => {
+              const next = new Map(prev)
+              next.set(userId, body)
+              return next
+            })
+          }}
+          onResetBody={(userId) => {
+            setDraftBodies((prev) => {
+              const next = new Map(prev)
+              next.delete(userId)
+              return next
+            })
+          }}
+          onConfirm={() => void handleConfirmSend()}
+          isSending={isSending}
+        />
       )}
     </div>
   )

@@ -52,8 +52,8 @@ export const create = mutation({
       if (args.title.length < 10 || args.title.length > 300) {
         throw validationError('Title must be between 10 and 300 characters')
       }
-      if (args.abstract.length < 100 || args.abstract.length > 5000) {
-        throw validationError('Abstract must be between 100 and 5,000 characters')
+      if (args.abstract.length < 1 || args.abstract.length > 5000) {
+        throw validationError('Abstract is required and must be under 5,000 characters')
       }
       if (args.authors.length < 1) {
         throw validationError('At least one author is required')
