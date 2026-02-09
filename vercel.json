@@ -1,5 +1,10 @@
 {
   "framework": null,
   "installCommand": "bun install",
-  "buildCommand": "bun run build"
+  "buildCommand": "bun run build",
+  "build": {
+    "env": {
+      "VITE_SHOW_ROLE_SWITCHER": "1"
+    }
+  }
 }
