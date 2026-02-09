@@ -1,8 +1,8 @@
 "use node";
 
 import { v } from 'convex/values'
+import { extractText } from 'unpdf'
 import { generateObject } from 'ai'
-import type { CoreMessage } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 
@@ -14,18 +14,17 @@ import { internal } from './_generated/api'
 // ---------------------------------------------------------------------------
 
 const MAX_ATTEMPTS = 3
+const MAX_TEXT_LENGTH = 100_000
 
-/** Maximum length for LLM-generated string fields (AC7 sanitization). */
-const MAX_LLM_FIELD_LENGTH = 5_000
+const PASS_NAMES = ['scope', 'formatting', 'citations', 'claims'] as const
 
 // ---------------------------------------------------------------------------
-// Zod schema for generateObject structured output (all 4 dimensions)
+// Zod schema for a single triage dimension
 // ---------------------------------------------------------------------------
 
-const dimensionSchema = z.object({
+const triageResultSchema = z.object({
   finding: z
     .string()
-    .max(MAX_LLM_FIELD_LENGTH)
     .describe('A concise summary of the analysis finding'),
   severity: z
     .enum(['low', 'medium', 'high'])
@@ -34,24 +33,15 @@ const dimensionSchema = z.object({
     ),
   recommendation: z
     .string()
-    .max(MAX_LLM_FIELD_LENGTH)
     .describe('Editor-facing recommendation based on the finding'),
 })
 
-const triageResultSchema = z.object({
-  scope: dimensionSchema.describe('Scope fit analysis'),
-  formatting: dimensionSchema.describe('Formatting and completeness analysis'),
-  citations: dimensionSchema.describe('Citation quality analysis'),
-  claims: dimensionSchema.describe('Technical claims and evidence analysis'),
-})
-
 // ---------------------------------------------------------------------------
-// Combined system prompt
+// Per-dimension system prompts
 // ---------------------------------------------------------------------------
 
-const TRIAGE_SYSTEM_PROMPT = `You are a triage assistant for the Alignment Journal, a peer-reviewed journal focused on theoretical AI alignment research. You will analyze the attached PDF paper across four dimensions and return structured results for each.
-
-## 1. Scope Fit
+const SYSTEM_PROMPTS: Record<(typeof PASS_NAMES)[number], string> = {
+  scope: `You are a triage assistant for the Alignment Journal, a peer-reviewed journal focused on theoretical AI alignment research. Analyze the following paper text and assess its scope fit.
 
 The journal's focus areas are:
 - Theoretical AI alignment: agency, understanding, asymptotic behavior of advanced synthetic agents
@@ -59,9 +49,9 @@ The journal's focus areas are:
 - Empirical work is welcome but no emphasis on SOTA benchmarks
 - Out of scope: AI governance, deployment, applied mechinterp, evaluations, societal impact
 
-Assess whether the paper falls within scope. Consider the paper's core thesis, methodology, and contribution area.
+Assess whether the paper falls within scope. Consider the paper's core thesis, methodology, and contribution area.`,
 
-## 2. Formatting & Completeness
+  formatting: `You are a triage assistant for the Alignment Journal. Analyze the following paper text for formatting and completeness issues.
 
 Check for:
 - Abstract present and well-structured
@@ -71,9 +61,9 @@ Check for:
 - Author affiliations included
 - Figures/tables referenced in text
 
-Report any formatting or completeness issues found.
+Report any formatting or completeness issues found.`,
 
-## 3. Citation Quality
+  citations: `You are a triage assistant for the Alignment Journal. Analyze the following paper text for citation quality.
 
 Check for:
 - Extract key citations referenced in the paper
@@ -81,9 +71,9 @@ Check for:
 - Identify citations that may be unresolvable (non-standard format, missing from common databases)
 - Note the total approximate citation count
 
-Report on citation quality and any issues found.
+Report on citation quality and any issues found.`,
 
-## 4. Technical Claims & Evidence
+  claims: `You are a triage assistant for the Alignment Journal. Analyze the following paper text for technical claims and evidence quality.
 
 Check for:
 - Identify the key technical claims made by the paper (2-5 main claims)
@@ -91,33 +81,11 @@ Check for:
 - Flag claims that appear unsupported or under-argued
 - Note whether the methodology is clearly described and reproducible
 
-Report on the quality of the paper's technical argumentation.`
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Truncate a string to the max LLM field length for DB storage. */
-function truncateLlmField(value: string): string {
-  if (value.length <= MAX_LLM_FIELD_LENGTH) return value
-  return value.slice(0, MAX_LLM_FIELD_LENGTH)
-}
-
-/** Sanitize an LLM result before persisting — truncates all string fields. */
-function sanitizeResult(result: {
-  finding: string
-  severity: 'low' | 'medium' | 'high'
-  recommendation: string
-}) {
-  return {
-    finding: truncateLlmField(result.finding),
-    severity: result.severity,
-    recommendation: truncateLlmField(result.recommendation),
-  }
+Report on the quality of the paper's technical argumentation.`,
 }
 
 // ---------------------------------------------------------------------------
-// Single triage action: sends PDF to Haiku, gets all 4 analyses at once
+// Single triage action: extracts text once, runs all 4 analyses sequentially
 // ---------------------------------------------------------------------------
 
 export const runTriage = internalAction({
@@ -139,44 +107,60 @@ export const runTriage = internalAction({
         attemptCount: attempt,
       })
 
-      // 2. Fetch PDF bytes from Convex storage
+      // 2. Fetch PDF and extract text
       const pdfUrl = await ctx.storage.getUrl(args.pdfStorageId)
       if (!pdfUrl) throw new Error('PDF not found in storage')
       const pdfResponse = await fetch(pdfUrl)
       const pdfBuffer = await pdfResponse.arrayBuffer()
+      const { text: extractedText } = await extractText(
+        new Uint8Array(pdfBuffer),
+        { mergePages: true },
+      )
 
-      // 3. Send PDF directly to Haiku — one call for all 4 dimensions
-      const { object: results } = await generateObject({
-        model: anthropic('claude-haiku-4-5-20251001'),
-        schema: triageResultSchema,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Analyze the attached PDF paper across all four triage dimensions: scope fit, formatting & completeness, citation quality, and technical claims & evidence.',
-              },
-              {
-                type: 'file',
-                data: new Uint8Array(pdfBuffer),
-                mimeType: 'application/pdf',
-              },
-            ],
+      // 3. Handle empty text
+      if (!extractedText || extractedText.trim().length === 0) {
+        const emptyResult = {
+          finding: 'No extractable text found in the PDF',
+          severity: 'high' as const,
+          recommendation:
+            'Request the author to resubmit with a text-based PDF',
+        }
+        await ctx.runMutation(internal.triage.writeAllResults, {
+          submissionId: args.submissionId,
+          triageRunId: args.triageRunId,
+          results: {
+            scope: emptyResult,
+            formatting: emptyResult,
+            citations: emptyResult,
+            claims: emptyResult,
           },
-        ] satisfies Array<CoreMessage>,
-        system: TRIAGE_SYSTEM_PROMPT,
-      })
+        })
+        return null
+      }
 
-      // 4. Write all 4 sanitized results + transition to TRIAGE_COMPLETE
+      // 4. Truncate text, then run all 4 analyses sequentially
+      const truncatedText = extractedText.slice(0, MAX_TEXT_LENGTH)
+      const results: Record<string, { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }> = {}
+
+      for (const passName of PASS_NAMES) {
+        const { object } = await generateObject({
+          model: anthropic('claude-haiku-4-5-20251001'),
+          schema: triageResultSchema,
+          system: SYSTEM_PROMPTS[passName],
+          prompt: `Analyze the following paper:\n\n${truncatedText}`,
+        })
+        results[passName] = object
+      }
+
+      // 5. Write all 4 results + transition to TRIAGE_COMPLETE
       await ctx.runMutation(internal.triage.writeAllResults, {
         submissionId: args.submissionId,
         triageRunId: args.triageRunId,
-        results: {
-          scope: sanitizeResult(results.scope),
-          formatting: sanitizeResult(results.formatting),
-          citations: sanitizeResult(results.citations),
-          claims: sanitizeResult(results.claims),
+        results: results as {
+          scope: { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }
+          formatting: { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }
+          citations: { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }
+          claims: { finding: string; severity: 'low' | 'medium' | 'high'; recommendation: string }
         },
       })
     } catch (error) {
