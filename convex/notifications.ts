@@ -37,7 +37,9 @@ export const listBySubmission = query({
 
       const notifications = await ctx.db
         .query('notifications')
-        .filter((q) => q.eq(q.field('submissionId'), args.submissionId))
+        .withIndex('by_submissionId', (q) =>
+          q.eq('submissionId', args.submissionId),
+        )
         .collect()
 
       const enriched = await Promise.all(

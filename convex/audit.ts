@@ -4,7 +4,7 @@ import { v } from 'convex/values'
 import { internalMutation, query } from './_generated/server'
 import { withUser } from './helpers/auth'
 import { unauthorizedError } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
@@ -72,9 +72,7 @@ export const listBySubmission = query({
       },
     ) => {
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role')
       }

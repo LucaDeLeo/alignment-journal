@@ -10,7 +10,7 @@ import {
   unauthorizedError,
   validationError,
 } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -124,9 +124,7 @@ export const sendInvitations = mutation({
     ) => {
       // Authorization: editor-level access
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role to send invitations')
       }
@@ -252,9 +250,7 @@ export const revokeInvitation = mutation({
     ) => {
       // Authorization: editor-level access
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role to revoke invitations')
       }
@@ -446,9 +442,7 @@ export const listBySubmission = query({
     ) => {
       // Authorization: editor-level access
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role')
       }
@@ -495,9 +489,7 @@ export const getReviewProgress = query({
     ) => {
       // Authorization: editor-level access
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role')
       }

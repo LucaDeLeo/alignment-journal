@@ -10,7 +10,7 @@ import { action, internalAction } from './_generated/server'
 import { internal } from './_generated/api'
 import { withUser } from './helpers/auth'
 import { unauthorizedError } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 
 import type { Doc } from './_generated/dataModel'
 import type { ActionCtx } from './_generated/server'
@@ -112,11 +112,24 @@ export const findMatches = action({
     ) => {
       // Authorization: editor-level access
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role')
+      }
+
+      // Check for API key before changing status
+      const apiKey = process.env.ANTHROPIC_API_KEY
+      if (!apiKey) {
+        console.error(
+          '[matching] ANTHROPIC_API_KEY not configured for reviewer matching',
+        )
+        await ctx.runMutation(internal.matching.saveMatchResults, {
+          submissionId: args.submissionId,
+          status: 'failed',
+          matches: [],
+          error: 'Anthropic API key is not configured. Please contact an administrator.',
+        })
+        return null
       }
 
       // Set status to running
@@ -127,20 +140,6 @@ export const findMatches = action({
       })
 
       try {
-        // Check for API key
-        const apiKey = process.env.ANTHROPIC_API_KEY
-        if (!apiKey) {
-          console.error(
-            '[matching] ANTHROPIC_API_KEY not configured for reviewer matching',
-          )
-          await ctx.runMutation(internal.matching.saveMatchResults, {
-            submissionId: args.submissionId,
-            status: 'failed',
-            matches: [],
-            error: 'Anthropic API key is not configured. Please contact an administrator.',
-          })
-          return null
-        }
 
         // Read submission
         const submission = await ctx.runQuery(

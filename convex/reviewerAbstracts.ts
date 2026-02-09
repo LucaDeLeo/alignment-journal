@@ -9,7 +9,7 @@ import {
   validationError,
   versionConflictError,
 } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -67,9 +67,7 @@ export const getBySubmission = query({
 
       // Access control: assigned reviewer, submission author, or editor role
       const isAssignedReviewer = abstract.reviewerId === ctx.user._id
-      const isEditor = EDITOR_ROLES.includes(
-        ctx.user.role as (typeof EDITOR_ROLES)[number],
-      )
+      const isEditor = hasEditorRole(ctx.user.role)
 
       let isSubmissionAuthor = false
       if (!isAssignedReviewer && !isEditor) {
@@ -123,9 +121,7 @@ export const createDraft = mutation({
     ) => {
       // Validate editor role
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role')
       }
@@ -424,9 +420,7 @@ export const approveAbstract = mutation({
       args: { submissionId: Id<'submissions'> },
     ) => {
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role')
       }

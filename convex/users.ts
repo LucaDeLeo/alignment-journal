@@ -6,7 +6,7 @@ import {
   environmentMisconfiguredError,
   unauthorizedError,
 } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -229,9 +229,7 @@ export const listEditors = query({
   ),
   handler: withUser(async (ctx: QueryCtx & { user: Doc<'users'> }) => {
     if (
-      !EDITOR_ROLES.includes(
-        ctx.user.role as (typeof EDITOR_ROLES)[number],
-      )
+      !hasEditorRole(ctx.user.role)
     ) {
       throw unauthorizedError('Requires editor role')
     }

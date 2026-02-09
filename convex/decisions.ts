@@ -8,7 +8,7 @@ import {
   unauthorizedError,
   validationError,
 } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 import { assertTransition } from './helpers/transitions'
 
 import type { Doc, Id } from './_generated/dataModel'
@@ -99,9 +99,7 @@ export const makeDecision = mutation({
     ) => {
       // Authorization: editor-level access
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError(
           'Requires editor, action editor, or admin role',
@@ -217,9 +215,7 @@ export const undoDecision = mutation({
     ) => {
       // Authorization: editor-level access
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError(
           'Requires editor, action editor, or admin role',

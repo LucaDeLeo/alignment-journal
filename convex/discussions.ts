@@ -7,7 +7,7 @@ import {
   unauthorizedError,
   validationError,
 } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -71,9 +71,7 @@ export const listBySubmission = query({
       if (isAuthor) {
         viewerRole = 'author'
       } else if (
-        EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        hasEditorRole(ctx.user.role)
       ) {
         viewerRole = 'editor'
       } else {
@@ -131,9 +129,7 @@ export const listBySubmission = query({
 
         const isReviewer =
           msgAuthor._id !== submission.authorId &&
-          !EDITOR_ROLES.includes(
-            msgAuthor.role as (typeof EDITOR_ROLES)[number],
-          )
+          !hasEditorRole(msgAuthor.role)
 
         if (isReviewer && !reviewerOrder.includes(msgAuthor._id)) {
           reviewerOrder.push(msgAuthor._id)
@@ -160,9 +156,7 @@ export const listBySubmission = query({
           if (msgAuthor._id === submission.authorId) {
             displayRole = 'author'
           } else if (
-            EDITOR_ROLES.includes(
-              msgAuthor.role as (typeof EDITOR_ROLES)[number],
-            )
+            hasEditorRole(msgAuthor.role)
           ) {
             displayRole = 'editor'
           }
@@ -256,9 +250,7 @@ export const postMessage = mutation({
 
       // Validate participant
       const isAuthor = ctx.user._id === submission.authorId
-      const isEditor = EDITOR_ROLES.includes(
-        ctx.user.role as (typeof EDITOR_ROLES)[number],
-      )
+      const isEditor = hasEditorRole(ctx.user.role)
 
       if (!isAuthor && !isEditor) {
         // Must be a reviewer with submitted/locked review

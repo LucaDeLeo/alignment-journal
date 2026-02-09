@@ -214,7 +214,9 @@ export default defineSchema({
     body: v.string(),
     readAt: v.optional(v.number()),
     createdAt: v.number(),
-  }).index('by_recipientId', ['recipientId']),
+  })
+    .index('by_recipientId', ['recipientId'])
+    .index('by_submissionId', ['submissionId']),
 
   preCheckReports: defineTable({
     userId: v.id('users'),

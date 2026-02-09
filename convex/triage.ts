@@ -48,11 +48,11 @@ const triageStatusValidator = v.union(
 // ---------------------------------------------------------------------------
 
 /** Roles that have cross-author access to triage data. */
-const TRIAGE_PRIVILEGED_ROLES: ReadonlyArray<string> = [
+const TRIAGE_PRIVILEGED_ROLES = [
   'editor_in_chief',
   'action_editor',
   'admin',
-]
+] as const
 
 /**
  * Object-level authorization for triage data access.
@@ -71,7 +71,7 @@ async function assertTriageAccess<TCtx extends QueryCtx>(
 
   if (
     submission.authorId !== ctx.user._id &&
-    !TRIAGE_PRIVILEGED_ROLES.includes(ctx.user.role)
+    !(TRIAGE_PRIVILEGED_ROLES as ReadonlyArray<string>).includes(ctx.user.role)
   ) {
     throw unauthorizedError('Not authorized to access this submission')
   }

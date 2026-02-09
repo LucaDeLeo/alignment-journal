@@ -13,7 +13,7 @@ import {
   unauthorizedError,
   validationError,
 } from './helpers/errors'
-import { EDITOR_ROLES, WRITE_ROLES } from './helpers/roles'
+import { WRITE_ROLES, hasEditorRole } from './helpers/roles'
 
 import type { Doc } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -260,9 +260,7 @@ export const getProfileByUserId = query({
       args: { userId: Doc<'users'>['_id'] },
     ) => {
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role')
       }
@@ -296,9 +294,7 @@ export const listProfiles = query({
   returns: v.array(enrichedProfileValidator),
   handler: withUser(async (ctx: QueryCtx & { user: Doc<'users'> }) => {
     if (
-      !EDITOR_ROLES.includes(
-        ctx.user.role as (typeof EDITOR_ROLES)[number],
-      )
+      !hasEditorRole(ctx.user.role)
     ) {
       throw unauthorizedError('Requires editor role')
     }
@@ -335,9 +331,7 @@ export const listReviewerUsers = query({
   returns: v.array(reviewerUserValidator),
   handler: withUser(async (ctx: QueryCtx & { user: Doc<'users'> }) => {
     if (
-      !EDITOR_ROLES.includes(
-        ctx.user.role as (typeof EDITOR_ROLES)[number],
-      )
+      !hasEditorRole(ctx.user.role)
     ) {
       throw unauthorizedError('Requires editor role')
     }
@@ -468,9 +462,7 @@ export const getMatchResults = query({
       args: { submissionId: Doc<'submissions'>['_id'] },
     ) => {
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError('Requires editor role')
       }

@@ -9,7 +9,7 @@ import {
   unauthorizedError,
   validationError,
 } from './helpers/errors'
-import { EDITOR_ROLES } from './helpers/roles'
+import { hasEditorRole } from './helpers/roles'
 import {
   DECISION_ONLY_STATUSES,
   assertTransition,
@@ -50,28 +50,28 @@ export const create = mutation({
     ) => {
       // Server-side field constraints (mirrors client-side Zod schema)
       if (args.title.length < 10 || args.title.length > 300) {
-        throw new Error('Title must be between 10 and 300 characters')
+        throw validationError('Title must be between 10 and 300 characters')
       }
       if (args.abstract.length < 100 || args.abstract.length > 5000) {
-        throw new Error('Abstract must be between 100 and 5,000 characters')
+        throw validationError('Abstract must be between 100 and 5,000 characters')
       }
       if (args.authors.length < 1) {
-        throw new Error('At least one author is required')
+        throw validationError('At least one author is required')
       }
       for (const author of args.authors) {
         if (!author.name.trim()) {
-          throw new Error('Author name is required')
+          throw validationError('Author name is required')
         }
         if (!author.affiliation.trim()) {
-          throw new Error('Author affiliation is required')
+          throw validationError('Author affiliation is required')
         }
       }
       if (args.keywords.length < 1 || args.keywords.length > 10) {
-        throw new Error('Between 1 and 10 keywords are required')
+        throw validationError('Between 1 and 10 keywords are required')
       }
       for (const keyword of args.keywords) {
         if (keyword.length < 2 || keyword.length > 50) {
-          throw new Error('Each keyword must be between 2 and 50 characters')
+          throw validationError('Each keyword must be between 2 and 50 characters')
         }
       }
 
@@ -249,9 +249,7 @@ export const listForEditor = query({
       },
     ) => {
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError(
           'Requires editor, action editor, or admin role',
@@ -379,9 +377,7 @@ export const getByIdForEditor = query({
       args: { submissionId: Id<'submissions'> },
     ) => {
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError(
           'Requires editor, action editor, or admin role',
@@ -434,9 +430,7 @@ export const transitionStatus = mutation({
       args: { submissionId: Id<'submissions'>; newStatus: SubmissionStatus },
     ) => {
       if (
-        !EDITOR_ROLES.includes(
-          ctx.user.role as (typeof EDITOR_ROLES)[number],
-        )
+        !hasEditorRole(ctx.user.role)
       ) {
         throw unauthorizedError(
           'Requires editor, action editor, or admin role',
