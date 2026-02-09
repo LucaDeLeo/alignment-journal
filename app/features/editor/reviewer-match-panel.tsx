@@ -193,8 +193,7 @@ export function ReviewerMatchPanel({
       {isEmpty && !isRunning && (
         <div className="rounded-lg border border-dashed p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            No reviewer profiles with embeddings available. Add profiles in
-            the Admin panel.
+            No reviewer profiles available. Add profiles in the Admin panel.
           </p>
         </div>
       )}

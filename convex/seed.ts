@@ -1406,20 +1406,14 @@ function buildPayments(
     {
       submissionId: ids.submissions[2],
       reviewerId: ids.reviewer1,
-      pageCount: 18,
       qualityLevel: 'excellent' as const,
-      weeksEarly: 1,
-      hasAbstractBonus: false,
       createdAt: payBase,
       updatedAt: payBase,
     },
     {
       submissionId: ids.submissions[2],
       reviewerId: ids.reviewer2,
-      pageCount: 18,
-      qualityLevel: 'standard' as const,
-      weeksEarly: 0,
-      hasAbstractBonus: false,
+      qualityLevel: 'useful' as const,
       createdAt: payBase,
       updatedAt: payBase,
     },
@@ -1427,20 +1421,14 @@ function buildPayments(
     {
       submissionId: ids.submissions[3],
       reviewerId: ids.reviewer2,
-      pageCount: 14,
-      qualityLevel: 'standard' as const,
-      weeksEarly: 0,
-      hasAbstractBonus: false,
+      qualityLevel: 'useful' as const,
       createdAt: payBase + DAY_MS,
       updatedAt: payBase + DAY_MS,
     },
     {
       submissionId: ids.submissions[3],
       reviewerId: ids.reviewer3,
-      pageCount: 14,
-      qualityLevel: 'standard' as const,
-      weeksEarly: 0,
-      hasAbstractBonus: false,
+      qualityLevel: 'useful' as const,
       createdAt: payBase + DAY_MS,
       updatedAt: payBase + DAY_MS,
     },
@@ -1448,20 +1436,14 @@ function buildPayments(
     {
       submissionId: ids.submissions[4],
       reviewerId: ids.reviewer1,
-      pageCount: 22,
       qualityLevel: 'excellent' as const,
-      weeksEarly: 2,
-      hasAbstractBonus: true,
       createdAt: payBase + 2 * DAY_MS,
       updatedAt: payBase + 2 * DAY_MS,
     },
     {
       submissionId: ids.submissions[4],
       reviewerId: ids.reviewer3,
-      pageCount: 22,
       qualityLevel: 'excellent' as const,
-      weeksEarly: 1,
-      hasAbstractBonus: false,
       createdAt: payBase + 2 * DAY_MS,
       updatedAt: payBase + 2 * DAY_MS,
     },
@@ -1710,21 +1692,6 @@ export const seedReviewerProfiles = internalMutation({
   },
 })
 
-export const seedEmbeddings = internalMutation({
-  args: { profileIds: v.array(v.id('reviewerProfiles')) },
-  returns: v.null(),
-  handler: async (ctx, { profileIds }) => {
-    for (const profileId of profileIds) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.matchingActions.generateEmbedding,
-        { profileId },
-      )
-    }
-    return null
-  },
-})
-
 export const seedReviews = internalMutation({
   args: {
     records: v.array(
@@ -1872,10 +1839,7 @@ export const seedPayments = internalMutation({
       v.object({
         submissionId: v.id('submissions'),
         reviewerId: v.id('users'),
-        pageCount: v.number(),
-        qualityLevel: v.union(v.literal('standard'), v.literal('excellent')),
-        weeksEarly: v.number(),
-        hasAbstractBonus: v.boolean(),
+        qualityLevel: v.union(v.literal('useful'), v.literal('excellent'), v.literal('standard')),
         createdAt: v.number(),
         updatedAt: v.number(),
       }),
@@ -2042,9 +2006,6 @@ export const seedData = internalAction({
       internal.seed.seedReviewerProfiles,
       { records: profilesData },
     )
-
-    // 4a. Schedule embedding generation for all profiles
-    await ctx.runMutation(internal.seed.seedEmbeddings, { profileIds })
 
     // 5. Reviews
     const reviewsData = buildReviews(baseTime, {

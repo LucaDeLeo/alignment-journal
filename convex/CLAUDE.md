@@ -30,20 +30,13 @@
 - API paths: `internal.matching.*` for queries/mutations, `internal.matchingActions.*` for actions
 - Frontend: `api.matching.*` for queries/mutations, `api.matchingActions.*` for actions
 
-## Embedding Generation Pattern (`matching.ts` + `matchingActions.ts`)
-- Deferred scheduling: mutation calls `ctx.scheduler.runAfter(0, internal.matchingActions.generateEmbedding, { profileId })`
-- Stale-check in `saveEmbedding`: compares `updatedAt` from profile read against current profile `updatedAt` to prevent concurrent job overwrites
-- `getProfileInternal` (internalQuery) and `saveEmbedding` (internalMutation) are internal-only — not client-accessible
-- OpenAI `text-embedding-3-large` with explicit `dimensions: 1536` (default is 3072)
-
-## Vector Search + LLM Enrichment Pattern (`matchingActions.ts`)
-- `findMatches` action: generates paper embedding → `ctx.vectorSearch()` → LLM rationale → saves results
-- `ctx.vectorSearch()` only available in actions (not queries/mutations); returns `Array<{ _id, _score }>`
+## LLM-Based Reviewer Matching (`matchingActions.ts`)
+- `findMatches` action: fetches all profiles → LLM rationale via Haiku → saves results
 - Results persisted to `matchResults` table via `internal.matching.saveMatchResults` internalMutation (upsert semantics)
 - UI subscribes reactively via `useQuery(api.matching.getMatchResults)` for status-driven rendering
 - LLM rationale via Vercel AI SDK `generateObject` with zod schema; graceful fallback to keyword-overlap rationale
 - Error sanitization via `sanitizeErrorMessage` before writing to client-visible `matchResults.error` field
-- `@ai-sdk/openai` provider with `gpt-4o-mini` for cost-efficient rationale generation
+- Vector/embedding infrastructure removed — `embedding` field on `reviewerProfiles` is deprecated (kept optional in schema for existing data)
 
 ## Single PDF Triage Action (`triage.ts` + `triageActions.ts`)
 - `triageActions.ts` has `"use node"` for Node.js runtime (required by `ai`, `@ai-sdk/anthropic`)

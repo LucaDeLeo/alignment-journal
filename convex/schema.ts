@@ -90,15 +90,11 @@ export default defineSchema({
         year: v.number(),
       }),
     ),
+    // Deprecated: kept optional for backwards-compatibility with existing data
     embedding: v.optional(v.array(v.float64())),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index('by_userId', ['userId'])
-    .vectorIndex('by_embedding', {
-      vectorField: 'embedding',
-      dimensions: 1536,
-    }),
+  }).index('by_userId', ['userId']),
 
   reviews: defineTable({
     submissionId: v.id('submissions'),
@@ -279,10 +275,11 @@ export default defineSchema({
   payments: defineTable({
     submissionId: v.id('submissions'),
     reviewerId: v.id('users'),
-    pageCount: v.number(),
-    qualityLevel: v.union(v.literal('standard'), v.literal('excellent')),
-    weeksEarly: v.number(),
-    hasAbstractBonus: v.boolean(),
+    qualityLevel: v.union(v.literal('useful'), v.literal('excellent'), v.literal('standard')),
+    // Deprecated: kept optional for backwards-compatibility with existing data
+    pageCount: v.optional(v.number()),
+    weeksEarly: v.optional(v.number()),
+    hasAbstractBonus: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

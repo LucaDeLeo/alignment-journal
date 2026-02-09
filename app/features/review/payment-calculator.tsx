@@ -3,9 +3,7 @@ import {
   AwardIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  ClockIcon,
   DollarSignIcon,
-  FileTextIcon,
   StarIcon,
 } from 'lucide-react'
 import * as React from 'react'
@@ -55,30 +53,6 @@ function useCountUp(target: number, duration = 600, active = true): number {
   return value
 }
 
-// ---------- useDeadlineCountdown hook ----------
-
-function useDeadlineCountdown(deadlineMs: number): number {
-  const [daysRemaining, setDaysRemaining] = React.useState(() =>
-    Math.max(0, Math.ceil((deadlineMs - Date.now()) / (24 * 60 * 60 * 1000))),
-  )
-
-  React.useEffect(() => {
-    function update() {
-      const remaining = Math.max(
-        0,
-        Math.ceil((deadlineMs - Date.now()) / (24 * 60 * 60 * 1000)),
-      )
-      setDaysRemaining(remaining)
-    }
-
-    update()
-    const interval = setInterval(update, 60_000)
-    return () => clearInterval(interval)
-  }, [deadlineMs])
-
-  return daysRemaining
-}
-
 // ---------- LineItem ----------
 
 function LineItem({
@@ -120,7 +94,7 @@ function LineItem({
           muted && 'text-muted-foreground',
         )}
       >
-        {value === null ? '—' : formatCurrency(animate ? animatedValue : value)}
+        {value === null ? '\u2014' : formatCurrency(animate ? animatedValue : value)}
       </span>
     </div>
   )
@@ -157,17 +131,6 @@ export function PaymentCalculator({
     )
   }
 
-  const daysRemaining = breakdown.deadlineMs
-    ? Math.max(
-        0,
-        Math.ceil(
-          (breakdown.deadlineMs - Date.now()) / (24 * 60 * 60 * 1000),
-        ),
-      )
-    : 0
-  const deadlinePassed =
-    !breakdown.reviewSubmittedAt && Date.now() > breakdown.deadlineMs
-
   return (
     <Collapsible open={isExpanded} onOpenChange={handleToggle}>
       <CollapsibleTrigger asChild>
@@ -193,94 +156,43 @@ export function PaymentCalculator({
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="border-t bg-muted/20 px-4 pb-3 pt-2" key={animationKey}>
-          <PaymentBreakdownContent
-            breakdown={breakdown}
-            daysRemaining={daysRemaining}
-            deadlinePassed={deadlinePassed}
-          />
+          <PaymentBreakdownContent breakdown={breakdown} />
         </div>
       </CollapsibleContent>
     </Collapsible>
   )
 }
 
-// Extracted to a separate component to re-mount on animation key change
 function PaymentBreakdownContent({
   breakdown,
-  daysRemaining,
-  deadlinePassed,
 }: {
   breakdown: {
-    basePay: number
-    pageCount: number
-    qualityMultiplier: number
-    qualityLevel: 'standard' | 'excellent'
+    qualityLevel: 'useful' | 'excellent'
     qualityAssessed: boolean
-    speedBonus: number
-    weeksEarly: number
-    deadlineMs: number
-    reviewSubmittedAt?: number
+    qualityPay: number
     abstractBonus: number
     hasAbstractAssignment: boolean
     total: number
   }
-  daysRemaining: number
-  deadlinePassed: boolean
 }) {
-  const liveDaysRemaining = useDeadlineCountdown(breakdown.deadlineMs)
-  const displayDays = breakdown.reviewSubmittedAt
-    ? daysRemaining
-    : liveDaysRemaining
-
-  const qualityAmount = breakdown.basePay * breakdown.qualityMultiplier - breakdown.basePay
-
-  const speedFormula = breakdown.reviewSubmittedAt
-    ? `$100 \u00d7 ${breakdown.weeksEarly} weeks early`
-    : deadlinePassed
-      ? '$0 \u2014 deadline passed'
-      : `$100 \u00d7 ${breakdown.weeksEarly} weeks early`
-
-  const deadlineText = breakdown.reviewSubmittedAt
-    ? 'Submitted'
-    : deadlinePassed
-      ? 'Deadline passed'
-      : `${displayDays} day${displayDays !== 1 ? 's' : ''} until deadline`
+  const qualityFormula = breakdown.qualityAssessed
+    ? `${breakdown.qualityLevel === 'excellent' ? '$400 excellent' : '$200 useful'}`
+    : 'Pending editor assessment'
 
   return (
     <>
       <LineItem
-        icon={<FileTextIcon className="h-3.5 w-3.5" />}
-        label="Base Pay"
-        formula={`$100 + $20 \u00d7 ${breakdown.pageCount} pages = ${formatCurrency(breakdown.basePay)}`}
-        value={breakdown.basePay}
-        animate
-      />
-      <LineItem
         icon={<StarIcon className="h-3.5 w-3.5" />}
-        label="Quality Multiplier"
-        formula={
-          breakdown.qualityAssessed
-            ? `${breakdown.qualityMultiplier}x ${breakdown.qualityLevel} = +${formatCurrency(qualityAmount)}`
-            : 'Pending editor assessment'
-        }
-        value={breakdown.qualityAssessed ? qualityAmount : null}
+        label="Quality Pay"
+        formula={qualityFormula}
+        value={breakdown.qualityAssessed ? breakdown.qualityPay : null}
         muted={!breakdown.qualityAssessed}
-        animate
-      />
-      <LineItem
-        icon={<ClockIcon className="h-3.5 w-3.5" />}
-        label="Speed Bonus"
-        formula={`${speedFormula} \u00b7 ${deadlineText}`}
-        value={breakdown.speedBonus}
-        muted={deadlinePassed && !breakdown.reviewSubmittedAt}
         animate
       />
       <LineItem
         icon={<AwardIcon className="h-3.5 w-3.5" />}
         label="Abstract Bonus"
-        formula={
-          breakdown.hasAbstractAssignment ? '$300' : 'Not applicable'
-        }
+        formula={breakdown.hasAbstractAssignment ? '$100' : 'Not applicable'}
         value={breakdown.hasAbstractAssignment ? breakdown.abstractBonus : null}
         muted={!breakdown.hasAbstractAssignment}
         animate

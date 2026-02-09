@@ -6,7 +6,6 @@ import {
   mutation,
   query,
 } from './_generated/server'
-import { internal } from './_generated/api'
 import { withUser } from './helpers/auth'
 import {
   notFoundError,
@@ -33,7 +32,6 @@ const enrichedProfileValidator = v.object({
   userAffiliation: v.string(),
   researchAreas: v.array(v.string()),
   publicationCount: v.number(),
-  hasEmbedding: v.boolean(),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
@@ -44,7 +42,6 @@ const fullProfileValidator = v.object({
   userId: v.id('users'),
   researchAreas: v.array(v.string()),
   publications: v.array(publicationValidator),
-  hasEmbedding: v.boolean(),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
@@ -85,65 +82,6 @@ export const getAllProfilesInternal = internalQuery({
   },
 })
 
-export const getProfileInternal = internalQuery({
-  args: { profileId: v.id('reviewerProfiles') },
-  returns: v.union(
-    v.object({
-      _id: v.id('reviewerProfiles'),
-      userId: v.id('users'),
-      researchAreas: v.array(v.string()),
-      publications: v.array(publicationValidator),
-      embedding: v.optional(v.array(v.float64())),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-    }),
-    v.null(),
-  ),
-  handler: async (ctx, args) => {
-    const profile = await ctx.db.get('reviewerProfiles', args.profileId)
-    if (!profile) return null
-    return {
-      _id: profile._id,
-      userId: profile.userId,
-      researchAreas: profile.researchAreas,
-      publications: profile.publications,
-      embedding: profile.embedding,
-      createdAt: profile.createdAt,
-      updatedAt: profile.updatedAt,
-    }
-  },
-})
-
-/**
- * Internal mutation to write the embedding vector to a reviewer profile.
- * Includes a stale-check: skips the write if the profile has been updated
- * since the embedding job started (prevents concurrent job overwrites).
- */
-export const saveEmbedding = internalMutation({
-  args: {
-    profileId: v.id('reviewerProfiles'),
-    embedding: v.array(v.float64()),
-    updatedAt: v.number(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const profile = await ctx.db.get('reviewerProfiles', args.profileId)
-    if (!profile) return null
-
-    // Stale-check: if the profile was updated after this embedding job started,
-    // skip the write to avoid overwriting a newer embedding.
-    if (profile.updatedAt > args.updatedAt) {
-      return null
-    }
-
-    await ctx.db.patch('reviewerProfiles', args.profileId, {
-      embedding: args.embedding,
-      updatedAt: Date.now(),
-    })
-    return null
-  },
-})
-
 // ---------------------------------------------------------------------------
 // Public functions
 // ---------------------------------------------------------------------------
@@ -151,7 +89,6 @@ export const saveEmbedding = internalMutation({
 /**
  * Creates or updates a reviewer profile (upsert semantics).
  * Requires admin or editor_in_chief role.
- * Schedules embedding generation on success.
  */
 export const createOrUpdateProfile = mutation({
   args: {
@@ -235,13 +172,6 @@ export const createOrUpdateProfile = mutation({
         })
       }
 
-      // Schedule embedding generation
-      await ctx.scheduler.runAfter(
-        0,
-        internal.matchingActions.generateEmbedding,
-        { profileId },
-      )
-
       return profileId
     },
   ),
@@ -277,7 +207,6 @@ export const getProfileByUserId = query({
         userId: profile.userId,
         researchAreas: profile.researchAreas,
         publications: profile.publications,
-        hasEmbedding: profile.embedding !== undefined && profile.embedding.length > 0,
         createdAt: profile.createdAt,
         updatedAt: profile.updatedAt,
       }
@@ -310,8 +239,6 @@ export const listProfiles = query({
           userAffiliation: user?.affiliation ?? '',
           researchAreas: profile.researchAreas,
           publicationCount: profile.publications.length,
-          hasEmbedding:
-            profile.embedding !== undefined && profile.embedding.length > 0,
           createdAt: profile.createdAt,
           updatedAt: profile.updatedAt,
         }

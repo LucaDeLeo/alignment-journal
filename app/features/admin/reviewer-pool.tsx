@@ -1,5 +1,5 @@
 import { useQuery } from 'convex/react'
-import { CheckCircle2, Clock, PlusIcon, UserIcon } from 'lucide-react'
+import { PlusIcon, UserIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { api } from '../../../convex/_generated/api'
@@ -109,7 +109,6 @@ export function ReviewerPool() {
               <TableHead>Affiliation</TableHead>
               <TableHead>Research Areas</TableHead>
               <TableHead className="text-right">Publications</TableHead>
-              <TableHead>Embedding</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -136,19 +135,6 @@ export function ReviewerPool() {
                 </TableCell>
                 <TableCell className="text-right">
                   {profile.publicationCount}
-                </TableCell>
-                <TableCell>
-                  {profile.hasEmbedding ? (
-                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                      <CheckCircle2 className="size-3 mr-1" />
-                      Embedding ready
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                      <Clock className="size-3 mr-1" />
-                      Pending
-                    </Badge>
-                  )}
                 </TableCell>
               </TableRow>
             ))}

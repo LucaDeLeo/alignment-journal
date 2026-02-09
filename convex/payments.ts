@@ -8,103 +8,39 @@ import { hasEditorRole } from './helpers/roles'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 
-// Payment formula constants (exported for tests and editor-facing queries)
-export const BASE_FLAT = 100
-export const PER_PAGE = 20
-export const SPEED_BONUS_PER_WEEK = 100
-export const DEADLINE_WEEKS = 4
-export const ABSTRACT_BONUS = 300
-export const QUALITY_MULTIPLIERS = { standard: 1, excellent: 2 } as const
-
-/** Default page count when no data is available. */
-export const DEFAULT_PAGE_COUNT = 15
-
-/** Rough bytes per page for PDF page estimation. */
-export const BYTES_PER_PAGE = 50000
+// Payment schedule constants (exported for tests)
+export const USEFUL_PAY = 200
+export const EXCELLENT_PAY = 400
+export const ABSTRACT_BONUS = 100
 
 /** Input data for pure payment calculation. */
 export interface PaymentInput {
-  pageCount: number | undefined
-  pdfFileSize: number | undefined
-  qualityLevel: 'standard' | 'excellent' | undefined
-  qualityAssessed: boolean
-  reviewCreatedAt: number
-  reviewStatus: 'assigned' | 'in_progress' | 'submitted' | 'locked'
-  reviewSubmittedAt: number | undefined
-  reviewUpdatedAt: number
+  qualityLevel: 'useful' | 'excellent' | undefined
   hasAbstractAssignment: boolean
-  now: number
 }
 
 /** Output from payment calculation. */
 export interface PaymentBreakdown {
-  basePay: number
-  pageCount: number
-  qualityMultiplier: number
-  qualityLevel: 'standard' | 'excellent'
+  qualityLevel: 'useful' | 'excellent'
   qualityAssessed: boolean
-  speedBonus: number
-  weeksEarly: number
-  deadlineMs: number
-  reviewSubmittedAt: number | undefined
+  qualityPay: number
   abstractBonus: number
   hasAbstractAssignment: boolean
   total: number
 }
 
-const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000
-
 /** Pure function: computes payment breakdown from input data. */
 export function computePaymentBreakdown(input: PaymentInput): PaymentBreakdown {
-  // Page count
-  let pageCount: number
-  if (input.pageCount !== undefined) {
-    pageCount = input.pageCount
-  } else if (input.pdfFileSize !== undefined && input.pdfFileSize > 0) {
-    pageCount = Math.max(1, Math.ceil(input.pdfFileSize / BYTES_PER_PAGE))
-  } else {
-    pageCount = DEFAULT_PAGE_COUNT
-  }
-
-  // Base pay
-  const basePay = BASE_FLAT + PER_PAGE * pageCount
-
-  // Quality
-  const qualityLevel = input.qualityLevel ?? 'standard'
-  const qualityMultiplier = QUALITY_MULTIPLIERS[qualityLevel]
-  const qualityAssessed = input.qualityAssessed
-
-  // Deadline
-  const deadlineMs = input.reviewCreatedAt + DEADLINE_WEEKS * MS_PER_WEEK
-
-  // Weeks early
-  let weeksEarly: number
-  if (input.reviewStatus === 'submitted' || input.reviewStatus === 'locked') {
-    const completionTime = input.reviewSubmittedAt ?? input.reviewUpdatedAt
-    weeksEarly = Math.max(0, Math.floor((deadlineMs - completionTime) / MS_PER_WEEK))
-  } else {
-    weeksEarly = Math.max(0, Math.floor((deadlineMs - input.now) / MS_PER_WEEK))
-  }
-
-  // Speed bonus
-  const speedBonus = SPEED_BONUS_PER_WEEK * weeksEarly
-
-  // Abstract bonus
+  const qualityLevel = input.qualityLevel ?? 'useful'
+  const qualityAssessed = input.qualityLevel !== undefined
+  const qualityPay = qualityLevel === 'excellent' ? EXCELLENT_PAY : USEFUL_PAY
   const abstractBonus = input.hasAbstractAssignment ? ABSTRACT_BONUS : 0
-
-  // Total
-  const total = basePay * qualityMultiplier + speedBonus + abstractBonus
+  const total = qualityPay + abstractBonus
 
   return {
-    basePay,
-    pageCount,
-    qualityMultiplier,
     qualityLevel,
     qualityAssessed,
-    speedBonus,
-    weeksEarly,
-    deadlineMs,
-    reviewSubmittedAt: input.reviewSubmittedAt,
+    qualityPay,
     abstractBonus,
     hasAbstractAssignment: input.hasAbstractAssignment,
     total,
@@ -112,9 +48,18 @@ export function computePaymentBreakdown(input: PaymentInput): PaymentBreakdown {
 }
 
 const qualityLevelValidator = v.union(
-  v.literal('standard'),
+  v.literal('useful'),
   v.literal('excellent'),
 )
+
+const breakdownValidator = v.object({
+  qualityLevel: qualityLevelValidator,
+  qualityAssessed: v.boolean(),
+  qualityPay: v.number(),
+  abstractBonus: v.number(),
+  hasAbstractAssignment: v.boolean(),
+  total: v.number(),
+})
 
 /**
  * Computes a detailed line-item payment breakdown for a reviewer on a submission.
@@ -122,20 +67,7 @@ const qualityLevelValidator = v.union(
  */
 export const getPaymentBreakdown = query({
   args: { submissionId: v.id('submissions') },
-  returns: v.object({
-    basePay: v.number(),
-    pageCount: v.number(),
-    qualityMultiplier: v.number(),
-    qualityLevel: qualityLevelValidator,
-    qualityAssessed: v.boolean(),
-    speedBonus: v.number(),
-    weeksEarly: v.number(),
-    deadlineMs: v.number(),
-    reviewSubmittedAt: v.optional(v.number()),
-    abstractBonus: v.number(),
-    hasAbstractAssignment: v.boolean(),
-    total: v.number(),
-  }),
+  returns: breakdownValidator,
   handler: withReviewer(
     async (
       ctx: QueryCtx & { user: Doc<'users'> },
@@ -176,21 +108,14 @@ export const getPaymentBreakdown = query({
         )
         .unique()
 
-      // 4. Get submission for PDF file size fallback
-      const submission = await ctx.db.get('submissions', args.submissionId)
-
-      // 5. Compute breakdown using pure function
+      // 4. Compute breakdown using pure function
+      // Map legacy 'standard' to 'useful'
+      const qualityLevel = paymentRecord?.qualityLevel === 'standard'
+        ? 'useful'
+        : paymentRecord?.qualityLevel as 'useful' | 'excellent' | undefined
       return computePaymentBreakdown({
-        pageCount: paymentRecord?.pageCount ?? submission?.pageCount,
-        pdfFileSize: submission?.pdfFileSize,
-        qualityLevel: paymentRecord?.qualityLevel,
-        qualityAssessed: paymentRecord !== undefined,
-        reviewCreatedAt: review.createdAt,
-        reviewStatus: review.status,
-        reviewSubmittedAt: review.submittedAt,
-        reviewUpdatedAt: review.updatedAt,
+        qualityLevel,
         hasAbstractAssignment: abstractRecord !== null,
-        now: Date.now(),
       })
     },
   ),
@@ -200,15 +125,9 @@ const paymentSummaryItemValidator = v.object({
   reviewerId: v.id('users'),
   reviewerName: v.string(),
   reviewStatus: v.string(),
-  basePay: v.number(),
-  pageCount: v.number(),
-  qualityMultiplier: v.number(),
   qualityLevel: qualityLevelValidator,
   qualityAssessed: v.boolean(),
-  speedBonus: v.number(),
-  weeksEarly: v.number(),
-  deadlineMs: v.number(),
-  reviewSubmittedAt: v.optional(v.number()),
+  qualityPay: v.number(),
   abstractBonus: v.number(),
   hasAbstractAssignment: v.boolean(),
   total: v.number(),
@@ -269,11 +188,6 @@ export const getPaymentSummary = query({
         )
         .collect()
 
-      // Get submission for PDF file size
-      const submission = await ctx.db.get('submissions', args.submissionId)
-
-      const now = Date.now()
-
       const summaries = await Promise.all(
         Array.from(latestByReviewer.values()).map(async (review) => {
           const reviewer = await ctx.db.get('users', review.reviewerId)
@@ -286,17 +200,13 @@ export const getPaymentSummary = query({
             (a) => a.reviewerId === review.reviewerId,
           )
 
+          // Map legacy 'standard' to 'useful'
+          const qualityLevel = paymentRecord?.qualityLevel === 'standard'
+            ? 'useful'
+            : paymentRecord?.qualityLevel as 'useful' | 'excellent' | undefined
           const breakdown = computePaymentBreakdown({
-            pageCount: paymentRecord?.pageCount ?? submission?.pageCount,
-            pdfFileSize: submission?.pdfFileSize,
-            qualityLevel: paymentRecord?.qualityLevel,
-            qualityAssessed: paymentRecord !== undefined,
-            reviewCreatedAt: review.createdAt,
-            reviewStatus: review.status,
-            reviewSubmittedAt: review.submittedAt,
-            reviewUpdatedAt: review.updatedAt,
+            qualityLevel,
             hasAbstractAssignment: abstractRecord !== undefined,
-            now,
           })
 
           return {
@@ -331,7 +241,7 @@ export const setQualityLevel = mutation({
       args: {
         submissionId: Id<'submissions'>
         reviewerId: Id<'users'>
-        qualityLevel: 'standard' | 'excellent'
+        qualityLevel: 'useful' | 'excellent'
       },
     ) => {
       if (!hasEditorRole(ctx.user.role)) {
@@ -381,24 +291,10 @@ export const setQualityLevel = mutation({
           updatedAt: now,
         })
       } else {
-        // Estimate page count from PDF file size or default
-        let pageCount = DEFAULT_PAGE_COUNT
-        if (submission.pageCount != null && submission.pageCount > 0) {
-          pageCount = submission.pageCount
-        } else if (submission.pdfFileSize != null && submission.pdfFileSize > 0) {
-          pageCount = Math.max(
-            1,
-            Math.ceil(submission.pdfFileSize / BYTES_PER_PAGE),
-          )
-        }
-
         await ctx.db.insert('payments', {
           submissionId: args.submissionId,
           reviewerId: args.reviewerId,
-          pageCount,
           qualityLevel: args.qualityLevel,
-          weeksEarly: 0,
-          hasAbstractBonus: false,
           createdAt: now,
           updatedAt: now,
         })

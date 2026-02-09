@@ -80,9 +80,7 @@ export function PaymentSummaryTable({
           <thead>
             <tr className="border-b text-left text-xs text-muted-foreground">
               <th className="pb-2 pr-3 font-medium">Reviewer</th>
-              <th className="pb-2 pr-3 font-medium">Base Pay</th>
               <th className="pb-2 pr-3 font-medium">Quality</th>
-              <th className="pb-2 pr-3 font-medium">Speed</th>
               <th className="pb-2 pr-3 font-medium">Abstract</th>
               <th className="pb-2 text-right font-medium">Total</th>
             </tr>
@@ -99,17 +97,9 @@ export function PaymentSummaryTable({
                   </div>
                 </td>
                 <td className="py-2.5 pr-3">
-                  <div>
-                    <span>{formatCurrency(item.basePay)}</span>
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({item.pageCount} pages)
-                    </span>
-                  </div>
-                </td>
-                <td className="py-2.5 pr-3">
                   <Select
                     value={item.qualityLevel}
-                    onValueChange={(value: 'standard' | 'excellent') => {
+                    onValueChange={(value: 'useful' | 'excellent') => {
                       void setQualityLevel({
                         submissionId,
                         reviewerId: item.reviewerId,
@@ -121,22 +111,10 @@ export function PaymentSummaryTable({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standard (1x)</SelectItem>
-                      <SelectItem value="excellent">Excellent (2x)</SelectItem>
+                      <SelectItem value="useful">Useful ($200)</SelectItem>
+                      <SelectItem value="excellent">Excellent ($400)</SelectItem>
                     </SelectContent>
                   </Select>
-                </td>
-                <td className="py-2.5 pr-3">
-                  {item.speedBonus > 0 ? (
-                    <div>
-                      <span>{formatCurrency(item.speedBonus)}</span>
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        ({item.weeksEarly}w early)
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">&mdash;</span>
-                  )}
                 </td>
                 <td className="py-2.5 pr-3">
                   {item.abstractBonus > 0 ? (

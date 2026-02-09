@@ -6,7 +6,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 
-import { action, internalAction } from './_generated/server'
+import { action } from './_generated/server'
 import { internal } from './_generated/api'
 import { withUser } from './helpers/auth'
 import { unauthorizedError } from './helpers/errors'
@@ -61,27 +61,6 @@ function generateFallbackRationale(
   }
   return `Research profile in ${reviewerAreas.slice(0, 3).join(', ')} may provide relevant perspective.`
 }
-
-// ---------------------------------------------------------------------------
-// Embedding generation (internal action)
-// ---------------------------------------------------------------------------
-
-/**
- * Embedding generation stub (disabled — will be replaced with a different solution).
- * Scheduled by `createOrUpdateProfile` after profile create/update.
- * On failure, logs the error and leaves the profile without an embedding.
- */
-export const generateEmbedding = internalAction({
-  args: { profileId: v.id('reviewerProfiles') },
-  returns: v.null(),
-  handler: async (_ctx, args) => {
-    // Embedding generation disabled — will be replaced with a different solution.
-    console.log(
-      `[matching] Embedding generation skipped for profile ${args.profileId} (disabled)`,
-    )
-    return null
-  },
-})
 
 // ---------------------------------------------------------------------------
 // Reviewer matching action
