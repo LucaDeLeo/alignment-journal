@@ -104,13 +104,11 @@ const matchItemValidator = v.object({
   affiliation: v.string(),
   researchAreas: v.array(v.string()),
   publicationTitles: v.array(v.string()),
-  rationale: v.string(),
-  confidence: v.float64(),
-  tier: v.optional(tierValidator),
-  score: v.optional(v.float64()),
-  strengths: v.optional(v.array(v.string())),
-  gapAnalysis: v.optional(v.string()),
-  recommendations: v.optional(v.array(v.string())),
+  tier: tierValidator,
+  score: v.float64(),
+  strengths: v.array(v.string()),
+  gapAnalysis: v.string(),
+  recommendations: v.array(v.string()),
 })
 
 /** Return validator for getMatchResults query. */

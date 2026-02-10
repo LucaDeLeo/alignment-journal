@@ -23,13 +23,11 @@ interface MatchData {
   affiliation: string
   researchAreas: Array<string>
   publicationTitles: Array<string>
-  rationale: string
-  confidence: number
-  tier?: MatchTier
-  score?: number
-  strengths?: Array<string>
-  gapAnalysis?: string
-  recommendations?: Array<string>
+  tier: MatchTier
+  score: number
+  strengths: Array<string>
+  gapAnalysis: string
+  recommendations: Array<string>
 }
 
 interface ReviewerMatchCardProps {
@@ -42,18 +40,6 @@ interface ReviewerMatchCardProps {
   onUndismiss: () => void
 }
 
-function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.8) return 'bg-green-500'
-  if (confidence >= 0.5) return 'bg-amber-500'
-  return 'bg-muted-foreground'
-}
-
-function getConfidenceLabel(confidence: number): string {
-  if (confidence >= 0.8) return 'High'
-  if (confidence >= 0.5) return 'Medium'
-  return 'Low'
-}
-
 export function ReviewerMatchCard({
   match,
   isSaved,
@@ -64,10 +50,9 @@ export function ReviewerMatchCard({
   onUndismiss,
 }: ReviewerMatchCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const hasTier = match.tier !== undefined
   const hasDetails =
-    (match.gapAnalysis && match.gapAnalysis.length > 0) ||
-    (match.recommendations && match.recommendations.length > 0)
+    match.gapAnalysis.length > 0 ||
+    match.recommendations.length > 0
 
   return (
     <Card
@@ -92,21 +77,13 @@ export function ReviewerMatchCard({
               <h4 className="truncate font-sans text-sm font-medium">
                 {match.reviewerName}
               </h4>
-              {/* Tier badge or legacy confidence */}
-              {hasTier ? (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${TIER_COLORS[match.tier!]}`}
-                >
-                  {TIER_LABELS[match.tier!]}
-                  {match.score !== undefined && (
-                    <span className="opacity-70">{Math.round(match.score)}</span>
-                  )}
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  {getConfidenceLabel(match.confidence)} ({Math.round(match.confidence * 100)}%)
-                </span>
-              )}
+              {/* Tier badge */}
+              <span
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${TIER_COLORS[match.tier]}`}
+              >
+                {TIER_LABELS[match.tier]}
+                <span className="opacity-70">{Math.round(match.score)}</span>
+              </span>
             </div>
             <p className="mt-0.5 truncate pl-6 text-xs text-muted-foreground">
               {match.affiliation}
@@ -125,8 +102,8 @@ export function ReviewerMatchCard({
               ))}
             </div>
 
-            {/* Strengths (always visible when present) */}
-            {match.strengths && match.strengths.length > 0 ? (
+            {/* Strengths */}
+            {match.strengths.length > 0 && (
               <ul className="mt-2 space-y-1 pl-6">
                 {match.strengths.map((strength, i) => (
                   <li
@@ -138,23 +115,6 @@ export function ReviewerMatchCard({
                   </li>
                 ))}
               </ul>
-            ) : (
-              /* Legacy rationale fallback */
-              <p className="mt-2 pl-6 text-sm text-muted-foreground">
-                {match.rationale}
-              </p>
-            )}
-
-            {/* Legacy confidence bar (only when no tier) */}
-            {!hasTier && (
-              <div className="mt-2 flex items-center gap-2 pl-6">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full transition-all ${getConfidenceColor(match.confidence)}`}
-                    style={{ width: `${Math.round(match.confidence * 100)}%` }}
-                  />
-                </div>
-              </div>
             )}
 
             {/* Collapsible details */}

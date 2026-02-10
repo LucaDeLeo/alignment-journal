@@ -185,14 +185,14 @@ export const listBySubmission = query({
         return {
           _id: msg._id,
           parentId: msg.parentId,
-          content: msg.isRetracted === true ? '' : msg.content,
-          isRetracted: msg.isRetracted === true,
+          content: msg.isRetracted ? '' : msg.content,
+          isRetracted: msg.isRetracted,
           displayName,
           displayRole: displayRole as string,
           isAnonymous,
           avatarInitials,
           isOwnMessage: msg.authorId === ctx.user._id,
-          editableUntil: msg.editableUntil ?? 0,
+          editableUntil: msg.editableUntil,
           createdAt: msg.createdAt,
           updatedAt: msg.updatedAt,
         }
@@ -338,7 +338,7 @@ export const editMessage = mutation({
         throw unauthorizedError('You can only edit your own messages')
       }
 
-      if (Date.now() >= (message.editableUntil ?? 0)) {
+      if (Date.now() >= message.editableUntil) {
         throw validationError(
           'The 5-minute edit window has expired',
         )
@@ -390,7 +390,7 @@ export const retractMessage = mutation({
         )
       }
 
-      if (message.isRetracted === true) {
+      if (message.isRetracted) {
         throw validationError('Message is already retracted')
       }
 

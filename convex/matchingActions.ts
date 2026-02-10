@@ -139,36 +139,6 @@ export function buildCandidateDescription(
   return lines.join('\n')
 }
 
-/** Convert tier+score to legacy 0-1 confidence value. */
-export function mapTierToConfidence(
-  tier: 'great' | 'good' | 'exploring',
-  score: number,
-): number {
-  const clampedScore = Math.max(0, Math.min(100, score))
-  switch (tier) {
-    case 'great':
-      // Map 70-100 score to 0.7-1.0 confidence
-      return 0.7 + (clampedScore / 100) * 0.3
-    case 'good':
-      // Map 40-69 score to 0.4-0.69 confidence
-      return 0.4 + (clampedScore / 100) * 0.29
-    case 'exploring':
-      // Map 0-39 score to 0.1-0.39 confidence
-      return 0.1 + (clampedScore / 100) * 0.29
-  }
-}
-
-/** Convert strengths array to a single legacy rationale string. */
-export function buildRationaleSummary(strengths: Array<string>): string {
-  if (strengths.length === 0) {
-    return 'Reviewer profile assessed for potential match.'
-  }
-  if (strengths.length === 1) {
-    return strengths[0]
-  }
-  return strengths.join(' ')
-}
-
 /** Keyword-overlap fallback scoring per candidate (when LLM fails). */
 export function computeFallbackMatch(
   keywords: Array<string>,
@@ -181,6 +151,7 @@ export function computeFallbackMatch(
   score: number
   strengths: Array<string>
   gapAnalysis: string
+  recommendations: Array<string>
 } {
   const normalizedKeywords = keywords.map((k) => k.toLowerCase())
   const allAreas = [
@@ -226,7 +197,12 @@ export function computeFallbackMatch(
       ? 'Fallback scoring — detailed gap analysis not available.'
       : 'Limited keyword overlap detected. LLM evaluation was not available.'
 
-  return { tier, score, strengths, gapAnalysis }
+  const recommendations =
+    overlapping.length > 0
+      ? ['Fallback scoring applied — consider re-running matching for detailed recommendations.']
+      : ['Fallback scoring applied — no keyword overlap detected. Consider re-running matching.']
+
+  return { tier, score, strengths, gapAnalysis, recommendations }
 }
 
 // ---------------------------------------------------------------------------
@@ -469,9 +445,7 @@ export const runMatchingPipeline = internalAction({
               score: fallback.score,
               strengths: fallback.strengths,
               gapAnalysis: fallback.gapAnalysis,
-              recommendations: [
-                'Fallback scoring applied — consider re-running matching.',
-              ],
+              recommendations: fallback.recommendations,
             })
           }
         }
@@ -519,7 +493,7 @@ export const runMatchingPipeline = internalAction({
         }
       }
 
-      // 10. Build final match results with legacy fields
+      // 10. Build final match results
       const finalMatches = topEvaluations.map((e) => {
         const candidate = candidates[e.candidateIdx]
         return {
@@ -529,8 +503,6 @@ export const runMatchingPipeline = internalAction({
           affiliation: candidate.affiliation,
           researchAreas: candidate.researchAreas,
           publicationTitles: candidate.publicationTitles,
-          rationale: buildRationaleSummary(e.strengths),
-          confidence: mapTierToConfidence(e.tier, e.score),
           tier: e.tier,
           score: Math.max(0, Math.min(100, e.score)),
           strengths: e.strengths,

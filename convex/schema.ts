@@ -90,8 +90,6 @@ export default defineSchema({
         year: v.number(),
       }),
     ),
-    // Deprecated: kept optional for backwards-compatibility with existing data
-    embedding: v.optional(v.array(v.float64())),
     expertiseLevels: v.optional(
       v.array(
         v.object({
@@ -173,8 +171,8 @@ export default defineSchema({
     authorId: v.id('users'),
     parentId: v.optional(v.id('discussions')),
     content: v.string(),
-    isRetracted: v.optional(v.boolean()),
-    editableUntil: v.optional(v.number()),
+    isRetracted: v.boolean(),
+    editableUntil: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('by_submissionId', ['submissionId']),
@@ -195,19 +193,15 @@ export default defineSchema({
         affiliation: v.string(),
         researchAreas: v.array(v.string()),
         publicationTitles: v.array(v.string()),
-        rationale: v.string(),
-        confidence: v.float64(),
-        tier: v.optional(
-          v.union(
-            v.literal('great'),
-            v.literal('good'),
-            v.literal('exploring'),
-          ),
+        tier: v.union(
+          v.literal('great'),
+          v.literal('good'),
+          v.literal('exploring'),
         ),
-        score: v.optional(v.float64()),
-        strengths: v.optional(v.array(v.string())),
-        gapAnalysis: v.optional(v.string()),
-        recommendations: v.optional(v.array(v.string())),
+        score: v.float64(),
+        strengths: v.array(v.string()),
+        gapAnalysis: v.string(),
+        recommendations: v.array(v.string()),
       }),
     ),
     editorialNotes: v.optional(v.array(v.string())),
@@ -324,11 +318,7 @@ export default defineSchema({
   payments: defineTable({
     submissionId: v.id('submissions'),
     reviewerId: v.id('users'),
-    qualityLevel: v.union(v.literal('useful'), v.literal('excellent'), v.literal('standard')),
-    // Deprecated: kept optional for backwards-compatibility with existing data
-    pageCount: v.optional(v.number()),
-    weeksEarly: v.optional(v.number()),
-    hasAbstractBonus: v.optional(v.boolean()),
+    qualityLevel: v.union(v.literal('useful'), v.literal('excellent')),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

@@ -160,11 +160,11 @@ export function ReviewerMatchPanel({
       if (aSaved !== bSaved) return aSaved - bSaved
       if (aDismissed !== bDismissed) return aDismissed - bDismissed
       // Tier ordering
-      const aTier = a.tier ? TIER_ORDER[a.tier] : 3
-      const bTier = b.tier ? TIER_ORDER[b.tier] : 3
+      const aTier = TIER_ORDER[a.tier]
+      const bTier = TIER_ORDER[b.tier]
       if (aTier !== bTier) return aTier - bTier
       // Score within same tier
-      return (b.score ?? 0) - (a.score ?? 0)
+      return b.score - a.score
     })
   }, [hasResults, matchResults?.matches, tierFilter, interactions])
 
@@ -185,7 +185,7 @@ export function ReviewerMatchPanel({
         userId: m.userId,
         reviewerName: m.reviewerName,
         affiliation: m.affiliation,
-        rationale: m.rationale,
+        rationale: m.strengths.join(' '),
       }))
   }, [hasResults, matchResults?.matches, interactions])
 

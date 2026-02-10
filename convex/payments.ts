@@ -109,12 +109,8 @@ export const getPaymentBreakdown = query({
         .unique()
 
       // 4. Compute breakdown using pure function
-      // Map legacy 'standard' to 'useful'
-      const qualityLevel = paymentRecord?.qualityLevel === 'standard'
-        ? 'useful'
-        : paymentRecord?.qualityLevel as 'useful' | 'excellent' | undefined
       return computePaymentBreakdown({
-        qualityLevel,
+        qualityLevel: paymentRecord?.qualityLevel,
         hasAbstractAssignment: abstractRecord !== null,
       })
     },
@@ -200,12 +196,8 @@ export const getPaymentSummary = query({
             (a) => a.reviewerId === review.reviewerId,
           )
 
-          // Map legacy 'standard' to 'useful'
-          const qualityLevel = paymentRecord?.qualityLevel === 'standard'
-            ? 'useful'
-            : paymentRecord?.qualityLevel as 'useful' | 'excellent' | undefined
           const breakdown = computePaymentBreakdown({
-            qualityLevel,
+            qualityLevel: paymentRecord?.qualityLevel,
             hasAbstractAssignment: abstractRecord !== undefined,
           })
 

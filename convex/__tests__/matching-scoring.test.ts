@@ -1,58 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { computeFallbackMatch, mapTierToConfidence } from '../matchingActions'
-
-// ---------------------------------------------------------------------------
-// Score clamping and tier range tests
-// ---------------------------------------------------------------------------
-
-describe('score clamping within tier ranges', () => {
-  it('great tier confidence is always in [0.7, 1.0]', () => {
-    for (const score of [0, 25, 50, 70, 85, 100]) {
-      const confidence = mapTierToConfidence('great', score)
-      expect(confidence).toBeGreaterThanOrEqual(0.7)
-      expect(confidence).toBeLessThanOrEqual(1.0)
-    }
-  })
-
-  it('good tier confidence is always in [0.4, 0.69]', () => {
-    for (const score of [0, 25, 50, 69, 100]) {
-      const confidence = mapTierToConfidence('good', score)
-      expect(confidence).toBeGreaterThanOrEqual(0.4)
-      expect(confidence).toBeLessThanOrEqual(0.69)
-    }
-  })
-
-  it('exploring tier confidence is always in [0.1, 0.39]', () => {
-    for (const score of [0, 10, 20, 39, 100]) {
-      const confidence = mapTierToConfidence('exploring', score)
-      expect(confidence).toBeGreaterThanOrEqual(0.1)
-      expect(confidence).toBeLessThanOrEqual(0.39)
-    }
-  })
-
-  it('great always maps higher than good at same scores', () => {
-    for (const score of [0, 50, 100]) {
-      const great = mapTierToConfidence('great', score)
-      const good = mapTierToConfidence('good', score)
-      expect(great).toBeGreaterThan(good)
-    }
-  })
-
-  it('good always maps higher than exploring at same scores', () => {
-    for (const score of [0, 50, 100]) {
-      const good = mapTierToConfidence('good', score)
-      const exploring = mapTierToConfidence('exploring', score)
-      expect(good).toBeGreaterThan(exploring)
-    }
-  })
-
-  it('handles fractional scores', () => {
-    const result = mapTierToConfidence('great', 72.5)
-    expect(result).toBeGreaterThan(0.7)
-    expect(result).toBeLessThan(1.0)
-  })
-})
+import { computeFallbackMatch } from '../matchingActions'
 
 // ---------------------------------------------------------------------------
 // Batch splitting edge cases (tested via computeFallbackMatch count behavior)

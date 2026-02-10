@@ -3,9 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCandidateDescription,
   buildPaperContext,
-  buildRationaleSummary,
   computeFallbackMatch,
-  mapTierToConfidence,
 } from '../matchingActions'
 
 // We test the pure utility functions from matching.ts
@@ -352,76 +350,6 @@ describe('buildCandidateDescription', () => {
       preferredTopics: ['alignment', 'corrigibility'],
     })
     expect(result).toContain('Preferred review topics: alignment, corrigibility')
-  })
-})
-
-describe('mapTierToConfidence', () => {
-  it('maps great tier at score 100 to near 1.0', () => {
-    const result = mapTierToConfidence('great', 100)
-    expect(result).toBe(1.0)
-  })
-
-  it('maps great tier at score 0 to 0.7', () => {
-    const result = mapTierToConfidence('great', 0)
-    expect(result).toBe(0.7)
-  })
-
-  it('maps good tier at score 100 to 0.69', () => {
-    const result = mapTierToConfidence('good', 100)
-    expect(result).toBe(0.69)
-  })
-
-  it('maps good tier at score 0 to 0.4', () => {
-    const result = mapTierToConfidence('good', 0)
-    expect(result).toBe(0.4)
-  })
-
-  it('maps exploring tier at score 100 to 0.39', () => {
-    const result = mapTierToConfidence('exploring', 100)
-    expect(result).toBe(0.39)
-  })
-
-  it('maps exploring tier at score 0 to 0.1', () => {
-    const result = mapTierToConfidence('exploring', 0)
-    expect(result).toBe(0.1)
-  })
-
-  it('clamps scores above 100', () => {
-    const result = mapTierToConfidence('great', 150)
-    expect(result).toBe(1.0)
-  })
-
-  it('clamps scores below 0', () => {
-    const result = mapTierToConfidence('great', -50)
-    expect(result).toBe(0.7)
-  })
-})
-
-describe('buildRationaleSummary', () => {
-  it('returns default message for empty strengths', () => {
-    const result = buildRationaleSummary([])
-    expect(result).toBe('Reviewer profile assessed for potential match.')
-  })
-
-  it('returns the single strength for a one-item array', () => {
-    const result = buildRationaleSummary(['Deep expertise in alignment.'])
-    expect(result).toBe('Deep expertise in alignment.')
-  })
-
-  it('joins multiple strengths with spaces', () => {
-    const result = buildRationaleSummary([
-      'Strong in alignment.',
-      'Published on corrigibility.',
-      'Good methodology background.',
-    ])
-    expect(result).toBe(
-      'Strong in alignment. Published on corrigibility. Good methodology background.',
-    )
-  })
-
-  it('joins exactly two strengths', () => {
-    const result = buildRationaleSummary(['A.', 'B.'])
-    expect(result).toBe('A. B.')
   })
 })
 

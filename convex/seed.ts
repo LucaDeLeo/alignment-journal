@@ -494,6 +494,8 @@ export function buildReviewerProfiles(
           yearCompleted: 2019,
         },
       ],
+      isAvailable: true,
+      maxConcurrentReviews: 3,
       createdAt: profileTime,
       updatedAt: profileTime,
     },
@@ -553,6 +555,7 @@ export function buildReviewerProfiles(
         },
       ],
       isAvailable: false,
+      maxConcurrentReviews: 2,
       createdAt: profileTime,
       updatedAt: profileTime,
     },
@@ -584,6 +587,30 @@ export function buildReviewerProfiles(
           year: 2023,
         },
       ],
+      bio: 'Interpretability researcher specializing in mechanistic analysis of safety-trained language models. Focuses on identifying and characterizing alignment-relevant circuits in transformers.',
+      expertiseLevels: [
+        { area: 'mechanistic interpretability', level: 'primary' as const },
+        { area: 'circuit analysis', level: 'primary' as const },
+        { area: 'transformer internals', level: 'primary' as const },
+        { area: 'safety evaluation', level: 'secondary' as const },
+        { area: 'representation engineering', level: 'secondary' as const },
+      ],
+      education: [
+        {
+          institution: 'University of Cambridge',
+          degree: 'PhD',
+          field: 'Machine Learning',
+          yearCompleted: 2021,
+        },
+      ],
+      preferredTopics: [
+        'mechanistic interpretability',
+        'circuit analysis',
+        'safety evaluation',
+        'activation patching',
+      ],
+      isAvailable: true,
+      maxConcurrentReviews: 3,
       createdAt: profileTime,
       updatedAt: profileTime,
     },
@@ -645,6 +672,8 @@ export function buildReviewerProfiles(
           yearCompleted: 2017,
         },
       ],
+      isAvailable: true,
+      maxConcurrentReviews: 2,
       createdAt: profileTime,
       updatedAt: profileTime,
     },
@@ -699,6 +728,8 @@ export function buildReviewerProfiles(
           yearCompleted: 2022,
         },
       ],
+      isAvailable: true,
+      maxConcurrentReviews: 4,
       createdAt: profileTime,
       updatedAt: profileTime,
     },
@@ -934,6 +965,8 @@ function buildDiscussions(
       authorId: ids.reviewer1,
       content:
         'I appreciated the authors\' response regarding the decomposability assumption. Could you elaborate on how the recursive framework handles tasks where the evaluation criterion is itself ambiguous — for instance, evaluating "alignment" of a model response where human evaluators may disagree on what constitutes aligned behavior?',
+      isRetracted: false,
+      editableUntil: 0,
       createdAt: discussBase,
       updatedAt: discussBase,
     },
@@ -942,6 +975,8 @@ function buildDiscussions(
       authorId: ids.author1,
       content:
         'Thank you for this thoughtful question. Our framework handles evaluator disagreement through the aggregation mechanism in Section 4.2 — when subtask evaluations conflict, the recursive reward model uses a calibrated uncertainty estimate rather than majority voting. We have added a discussion of this in the revision (Section 4.2.1). For the specific case of "alignment" evaluation, our approach would decompose it into more concrete subtasks (helpfulness, harmlessness, honesty) where evaluator agreement is typically higher.',
+      isRetracted: false,
+      editableUntil: 0,
       createdAt: discussBase + 4 * 3_600_000,
       updatedAt: discussBase + 4 * 3_600_000,
     },
@@ -950,6 +985,8 @@ function buildDiscussions(
       authorId: ids.reviewer2,
       content:
         'The decomposition into helpfulness/harmlessness/honesty subtasks is interesting, but doesn\'t this push the alignment evaluation problem one level deeper rather than solving it? Each of those subtasks could also have ambiguous evaluation criteria.',
+      isRetracted: false,
+      editableUntil: 0,
       createdAt: discussBase + DAY_MS,
       updatedAt: discussBase + DAY_MS,
     },
@@ -958,6 +995,8 @@ function buildDiscussions(
       authorId: ids.author1,
       content:
         'You raise a valid point. The key insight from our theoretical result is that the recursive decomposition does not need to eliminate ambiguity — it only needs to reduce it sufficiently at each level for the logarithmic bound to hold. Section 3.3 formalizes this as the "monotone disambiguation" property. In practice, our empirical results show that 2-3 levels of decomposition suffice for the benchmark tasks. We have added a new paragraph in the discussion acknowledging the theoretical possibility of tasks requiring deeper recursion.',
+      isRetracted: false,
+      editableUntil: 0,
       createdAt: discussBase + DAY_MS + 6 * 3_600_000,
       updatedAt: discussBase + DAY_MS + 6 * 3_600_000,
     },
@@ -967,6 +1006,8 @@ function buildDiscussions(
       authorId: ids.reviewer1,
       content:
         'The modularity finding for refusal circuits is striking. Have you investigated whether these circuits remain modular when the model is fine-tuned on adversarial data? My concern is that adversarial fine-tuning might entangle the refusal circuits with other capabilities in ways that undermine targeted safety interventions.',
+      isRetracted: false,
+      editableUntil: 0,
       createdAt: sub5DiscussBase,
       updatedAt: sub5DiscussBase,
     },
@@ -975,6 +1016,8 @@ function buildDiscussions(
       authorId: ids.author1,
       content:
         'Thank you for raising this important point. We ran a preliminary experiment on adversarial fine-tuning (Appendix D, Table 3) and found that moderate adversarial training (up to 5% of training data) preserves circuit modularity. However, at 20% adversarial data, we observed significant circuit entanglement — particularly between refusal and instruction-following circuits. We have added a discussion of this limitation in Section 6.2 of the revision.',
+      isRetracted: false,
+      editableUntil: 0,
       createdAt: sub5DiscussBase + 6 * 3_600_000,
       updatedAt: sub5DiscussBase + 6 * 3_600_000,
     },
@@ -983,6 +1026,8 @@ function buildDiscussions(
       authorId: ids.reviewer3,
       content:
         'Building on Reviewer 1\'s question — the entanglement at 20% adversarial data is concerning but not surprising given similar findings in representation engineering. Could you clarify whether the "honesty circuits" you identified overlap with the sycophancy circuits described in recent work by Perez et al. (2024)? This seems relevant for understanding the generalizability of your circuit taxonomy.',
+      isRetracted: false,
+      editableUntil: 0,
       createdAt: sub5DiscussBase + DAY_MS,
       updatedAt: sub5DiscussBase + DAY_MS,
     },
@@ -1005,6 +1050,8 @@ function buildDiscussionReplies(
       parentId: ids.sub5FirstDiscussionId,
       content:
         'Regarding the connection to Perez et al. (2024) — we found partial overlap between our "honesty circuits" and their sycophancy circuits (approximately 40% shared attention heads). However, the refusal circuits we identified are largely distinct, suggesting that refusal behavior relies on different mechanisms than sycophancy suppression. We have added a comparison table in Section 5.3 of the revision.',
+      isRetracted: false,
+      editableUntil: 0,
       createdAt: sub5DiscussBase + DAY_MS + 4 * 3_600_000,
       updatedAt: sub5DiscussBase + DAY_MS + 4 * 3_600_000,
     },
@@ -1378,6 +1425,30 @@ function buildMatchResults(
       status: 'complete' as const,
       matches: [
         {
+          profileId: ids.profiles[2],
+          userId: ids.reviewers[2],
+          reviewerName: 'Dr. James Mitchell',
+          affiliation: 'DeepMind',
+          researchAreas: [
+            'mechanistic interpretability',
+            'circuit analysis',
+            'transformer internals',
+          ],
+          publicationTitles: [
+            'Identifying Safety-Critical Circuits in Language Models via Causal Tracing',
+          ],
+          tier: 'great' as const,
+          score: 92,
+          strengths: [
+            'Mechanistic interpretability expertise directly applicable to detecting mesa-optimization signatures in transformers.',
+            'Published on safety-critical circuit identification using causal tracing — core methodology of this paper.',
+          ],
+          gapAnalysis: 'Less focused on inner alignment theory; may need to pair with a reviewer stronger in formal mesa-optimization definitions.',
+          recommendations: [
+            'Pair with a reviewer who has formal inner alignment expertise for comprehensive coverage.',
+          ],
+        },
+        {
           profileId: ids.profiles[0],
           userId: ids.reviewers[0],
           reviewerName: 'Dr. Yuki Tanaka',
@@ -1390,9 +1461,16 @@ function buildMatchResults(
           publicationTitles: [
             'Toward a Formal Theory of Corrigible Agent Architectures',
           ],
-          rationale:
-            'Strong background in agent foundations and formal alignment theory. Research on corrigibility directly relevant to mesa-optimization analysis.',
-          confidence: 0.87,
+          tier: 'great' as const,
+          score: 87,
+          strengths: [
+            'Strong background in agent foundations and formal alignment theory.',
+            'Research on corrigibility directly relevant to mesa-optimization analysis.',
+          ],
+          gapAnalysis: 'Primary expertise is in corrigibility rather than mesa-optimization specifically, but strong theoretical foundations compensate.',
+          recommendations: [
+            'Well-suited for evaluating the formal framework and theoretical contributions.',
+          ],
         },
         {
           profileId: ids.profiles[1],
@@ -1407,28 +1485,26 @@ function buildMatchResults(
           publicationTitles: [
             'Recursive Reward Calibration for Complex Tasks',
           ],
-          rationale:
+          tier: 'good' as const,
+          score: 68,
+          strengths: [
             'Expertise in training dynamics and reward modeling relevant to understanding mesa-optimizer emergence during RLHF.',
-          confidence: 0.78,
-        },
-        {
-          profileId: ids.profiles[2],
-          userId: ids.reviewers[2],
-          reviewerName: 'Dr. James Mitchell',
-          affiliation: 'DeepMind',
-          researchAreas: [
-            'mechanistic interpretability',
-            'circuit analysis',
-            'transformer internals',
+            'Experience with evaluation methodology applicable to assessing the proposed mitigation strategies.',
           ],
-          publicationTitles: [
-            'Identifying Safety-Critical Circuits in Language Models via Causal Tracing',
+          gapAnalysis: 'Primary focus on scalable oversight rather than inner alignment. May not be able to fully evaluate the mechanistic interpretability components.',
+          recommendations: [
+            'Best suited for evaluating the RLHF-related aspects and proposed adversarial training mitigation.',
           ],
-          rationale:
-            'Mechanistic interpretability expertise directly applicable to detecting mesa-optimization signatures in transformers.',
-          confidence: 0.92,
         },
       ],
+      editorialNotes: [
+        'Dr. Mitchell and Dr. Tanaka form a strong complementary pair: Mitchell covers the mechanistic interpretability methodology while Tanaka brings formal alignment theory.',
+        'Dr. Sharma adds RLHF training dynamics perspective but is currently unavailable.',
+        'Recommended combination: Mitchell + Tanaka for comprehensive coverage of both empirical and theoretical aspects.',
+      ],
+      suggestedCombination: [1, 2],
+      modelVersion: 'claude-haiku-4-5-20251001',
+      computedAt: baseTime + 7 * DAY_MS,
       createdAt: baseTime + 7 * DAY_MS,
     },
   ]
@@ -1897,8 +1973,8 @@ export const seedDiscussions = internalMutation({
         authorId: v.id('users'),
         parentId: v.optional(v.id('discussions')),
         content: v.string(),
-        isRetracted: v.optional(v.boolean()),
-        editableUntil: v.optional(v.number()),
+        isRetracted: v.boolean(),
+        editableUntil: v.number(),
         createdAt: v.number(),
         updatedAt: v.number(),
       }),
@@ -1967,7 +2043,7 @@ export const seedPayments = internalMutation({
       v.object({
         submissionId: v.id('submissions'),
         reviewerId: v.id('users'),
-        qualityLevel: v.union(v.literal('useful'), v.literal('excellent'), v.literal('standard')),
+        qualityLevel: v.union(v.literal('useful'), v.literal('excellent')),
         createdAt: v.number(),
         updatedAt: v.number(),
       }),
@@ -2028,10 +2104,21 @@ export const seedMatchResults = internalMutation({
             affiliation: v.string(),
             researchAreas: v.array(v.string()),
             publicationTitles: v.array(v.string()),
-            rationale: v.string(),
-            confidence: v.float64(),
+            tier: v.union(
+              v.literal('great'),
+              v.literal('good'),
+              v.literal('exploring'),
+            ),
+            score: v.float64(),
+            strengths: v.array(v.string()),
+            gapAnalysis: v.string(),
+            recommendations: v.array(v.string()),
           }),
         ),
+        editorialNotes: v.optional(v.array(v.string())),
+        suggestedCombination: v.optional(v.array(v.number())),
+        modelVersion: v.optional(v.string()),
+        computedAt: v.optional(v.number()),
         error: v.optional(v.string()),
         createdAt: v.number(),
       }),

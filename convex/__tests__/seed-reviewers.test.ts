@@ -127,7 +127,7 @@ describe('buildReviewerProfiles', () => {
     expect(unique.size).toBe(5)
   })
 
-  it('4 of 5 profiles have enriched fields (bio, expertiseLevels, preferredTopics, education)', () => {
+  it('all 5 profiles have enriched fields (bio, expertiseLevels, preferredTopics, education)', () => {
     const enriched = profiles.filter(
       (p) =>
         'bio' in p &&
@@ -135,16 +135,16 @@ describe('buildReviewerProfiles', () => {
         'preferredTopics' in p &&
         'education' in p,
     )
-    expect(enriched).toHaveLength(4)
+    expect(enriched).toHaveLength(5)
   })
 
-  it('profile at index 2 (mechanistic interpretability) has no enriched fields', () => {
+  it('profile at index 2 (mechanistic interpretability) has enriched fields', () => {
     const profile = profiles[2]
     expect(profile.researchAreas).toContain('mechanistic interpretability')
-    expect('bio' in profile).toBe(false)
-    expect('expertiseLevels' in profile).toBe(false)
-    expect('preferredTopics' in profile).toBe(false)
-    expect('education' in profile).toBe(false)
+    expect('bio' in profile).toBe(true)
+    expect('expertiseLevels' in profile).toBe(true)
+    expect('preferredTopics' in profile).toBe(true)
+    expect('education' in profile).toBe(true)
   })
 
   it('one profile has isAvailable set to false', () => {
