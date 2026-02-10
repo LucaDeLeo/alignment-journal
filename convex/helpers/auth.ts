@@ -191,27 +191,34 @@ export function withReviewer<
 >(
   handler: (ctx: TAuthCtx<TCtx>, args: TArgs) => Promise<TReturns>,
 ): (ctx: TCtx, args: TArgs) => Promise<TReturns> {
-  return withRole<TCtx, TArgs, TReturns>(
-    'reviewer',
-    async (ctx, args) => {
-      const review = await ctx.db
-        .query('reviews')
-        .withIndex('by_submissionId_reviewerId', (q) =>
-          q
-            .eq('submissionId', args.submissionId)
-            .eq('reviewerId', ctx.user._id),
-        )
-        .unique()
+  return withUser<TCtx, TArgs, TReturns>(async (ctx, args) => {
+    const isReviewer = ctx.user.role === 'reviewer'
+    const isDemoAdmin =
+      process.env.DEMO_ROLE_SWITCHER && ctx.user.role === 'admin'
 
-      if (!review) {
-        throw unauthorizedError(
-          'Reviewer is not assigned to this submission',
-        )
-      }
+    if (!isReviewer && !isDemoAdmin) {
+      throw unauthorizedError(
+        `Requires role "reviewer", but user has role "${ctx.user.role}"`,
+      )
+    }
 
-      return handler(ctx, args)
-    },
-  )
+    const review = await ctx.db
+      .query('reviews')
+      .withIndex('by_submissionId_reviewerId', (q) =>
+        q
+          .eq('submissionId', args.submissionId)
+          .eq('reviewerId', ctx.user._id),
+      )
+      .unique()
+
+    if (!review) {
+      throw unauthorizedError(
+        'Reviewer is not assigned to this submission',
+      )
+    }
+
+    return handler(ctx, args)
+  })
 }
 
 /**
