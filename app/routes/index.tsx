@@ -262,7 +262,7 @@ function Home() {
                     Pre-submission check
                   </strong>
                   : 4-dimension LLM analysis (scope fit, formatting, citations,
-                  claims) runs in parallel
+                  claims)
                 </li>
                 <li>
                   Per-submission detail view with status timeline (11-state
@@ -374,8 +374,8 @@ function Home() {
                 </li>
                 <li>Reviewer abstract drafting</li>
                 <li>
-                  Payment calculator: estimated compensation based on page count,
-                  quality rating, speed bonus, and abstract bonus
+                  Payment calculator: estimated compensation based on quality
+                  rating and abstract bonus
                 </li>
                 <li>
                   Invitation acceptance flow at{' '}
@@ -405,7 +405,7 @@ function Home() {
             </CardHeader>
             <CardContent>
               <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
-                <li>Paginated list of accepted papers</li>
+                <li>Paginated list of published papers</li>
                 <li>
                   Article detail pages with dual abstract display: author
                   abstract alongside reviewer abstract
@@ -463,8 +463,7 @@ function Home() {
           <li>Role-based access control on every backend function</li>
           <li>Append-only audit trail</li>
           <li>
-            Paid review compensation model (base + quality multiplier + speed
-            bonus + abstract bonus)
+            Paid review compensation model (quality rating + abstract bonus)
           </li>
           <li>
             Semi-confidential review: reviewer anonymity during review,
