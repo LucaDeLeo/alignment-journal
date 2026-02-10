@@ -235,7 +235,7 @@ function buildSubmissions(
         'Mechanistic Interpretability of Alignment-Relevant Circuits in Large Language Models',
       authors: [
         { name: 'Dr. Sarah Chen', affiliation: 'UC Berkeley CHAI' },
-        { name: 'Dr. Yuki Tanaka', affiliation: 'MIRI' },
+        { name: 'Dr. Kevin Liu', affiliation: 'MIRI' },
       ],
       abstract:
         'We apply mechanistic interpretability techniques to identify and characterize circuits in large language models that are relevant to alignment properties. Using activation patching, causal tracing, and circuit ablation on a suite of alignment-relevant behavioral evaluations, we identify three circuit families: "honesty circuits" involved in truthful vs. sycophantic responses, "refusal circuits" mediating safety-trained behavior, and "instruction-following circuits" governing the model\'s response to user directives. We demonstrate that these circuits are largely modular and can be independently manipulated, raising both opportunities (targeted safety interventions) and risks (targeted safety bypass). Our findings provide a mechanistic foundation for understanding how alignment training shapes model internals.',
@@ -247,6 +247,7 @@ function buildSubmissions(
         'safety',
       ],
       status: 'PUBLISHED' as const,
+      shortId: '2026.001',
       actionEditorId: userIds.ae,
       assignedAt: now + 7 * DAY_MS,
       decisionNote:
@@ -1814,6 +1815,7 @@ export const seedSubmissions = internalMutation({
         decidedAt: v.optional(v.number()),
         extractedText: v.optional(v.string()),
         pageCount: v.optional(v.number()),
+        shortId: v.optional(v.string()),
         publicConversation: v.optional(v.boolean()),
         createdAt: v.number(),
         updatedAt: v.number(),

@@ -10,9 +10,10 @@ import { notFoundError } from './helpers/errors'
  * Rejects non-PUBLISHED submissions with notFoundError.
  */
 export const getPublishedArticle = query({
-  args: { articleId: v.id('submissions') },
+  args: { shortId: v.string() },
   returns: v.object({
     _id: v.id('submissions'),
+    shortId: v.optional(v.string()),
     title: v.string(),
     authors: v.array(v.object({ name: v.string(), affiliation: v.string() })),
     abstract: v.string(),
@@ -34,7 +35,10 @@ export const getPublishedArticle = query({
     ),
   }),
   handler: async (ctx, args) => {
-    const submission = await ctx.db.get('submissions', args.articleId)
+    const submission = await ctx.db
+      .query('submissions')
+      .withIndex('by_shortId', (q) => q.eq('shortId', args.shortId))
+      .unique()
     if (!submission || submission.status !== 'PUBLISHED') {
       throw notFoundError('Article')
     }
@@ -53,7 +57,7 @@ export const getPublishedArticle = query({
     const abstract = await ctx.db
       .query('reviewerAbstracts')
       .withIndex('by_submissionId', (q) =>
-        q.eq('submissionId', args.articleId),
+        q.eq('submissionId', submission._id),
       )
       .unique()
 
@@ -74,6 +78,7 @@ export const getPublishedArticle = query({
 
     return {
       _id: submission._id,
+      shortId: submission.shortId,
       title: submission.title,
       authors: submission.authors,
       abstract: submission.abstract,
@@ -100,6 +105,7 @@ export const listPublished = query({
     page: v.array(
       v.object({
         _id: v.id('submissions'),
+        shortId: v.optional(v.string()),
         title: v.string(),
         authors: v.array(
           v.object({ name: v.string(), affiliation: v.string() }),
@@ -128,6 +134,7 @@ export const listPublished = query({
 
     const page = results.page.map((s) => ({
       _id: s._id,
+      shortId: s.shortId,
       title: s.title,
       authors: s.authors,
       abstractPreview: s.abstract.slice(0, 300),

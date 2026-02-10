@@ -42,8 +42,8 @@ function ArticleIndex() {
           {results.map((article) => (
             <Link
               key={article._id}
-              to="/article/$articleId"
-              params={{ articleId: article._id }}
+              to="/article/$shortId"
+              params={{ shortId: article.shortId! }}
               className="block rounded-lg border p-5 transition-colors hover:bg-accent/50"
             >
               <h2 className="font-serif text-xl font-semibold tracking-tight">

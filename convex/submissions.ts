@@ -452,10 +452,23 @@ export const transitionStatus = mutation({
 
       assertTransition(submission.status, args.newStatus)
 
-      await ctx.db.patch('submissions', submission._id, {
+      const patchFields: { status: SubmissionStatus; updatedAt: number; shortId?: string } = {
         status: args.newStatus,
         updatedAt: Date.now(),
-      })
+      }
+
+      // Generate arXiv-style short ID on publish
+      if (args.newStatus === 'PUBLISHED') {
+        const year = new Date().getFullYear()
+        const published = await ctx.db
+          .query('submissions')
+          .withIndex('by_status', (idx) => idx.eq('status', 'PUBLISHED'))
+          .collect()
+        const nextNum = published.length + 1
+        patchFields.shortId = `${year}.${String(nextNum).padStart(3, '0')}`
+      }
+
+      await ctx.db.patch('submissions', submission._id, patchFields)
 
       await ctx.scheduler.runAfter(0, internal.audit.logAction, {
         submissionId: args.submissionId,

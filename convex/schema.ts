@@ -38,13 +38,15 @@ export default defineSchema({
     assignedAt: v.optional(v.number()),
     decisionNote: v.optional(v.string()),
     decidedAt: v.optional(v.number()),
+    shortId: v.optional(v.string()),
     publicConversation: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index('by_authorId', ['authorId'])
     .index('by_status', ['status'])
-    .index('by_actionEditorId', ['actionEditorId']),
+    .index('by_actionEditorId', ['actionEditorId'])
+    .index('by_shortId', ['shortId']),
 
   triageReports: defineTable({
     submissionId: v.id('submissions'),

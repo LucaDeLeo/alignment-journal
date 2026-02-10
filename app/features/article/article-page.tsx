@@ -6,19 +6,17 @@ import { api } from '../../../convex/_generated/api'
 import { ArticleMetadata } from './article-metadata'
 import { DualAbstractDisplay } from './dual-abstract-display'
 
-import type { Id } from '../../../convex/_generated/dataModel'
-
 import { ExtractedHtmlContent } from '~/components/extracted-html-content'
 import { ExtractedTextContent } from '~/components/extracted-text-content'
 import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
 
 interface ArticlePageProps {
-  articleId: Id<'submissions'>
+  shortId: string
 }
 
-export function ArticlePage({ articleId }: ArticlePageProps) {
-  const article = useQuery(api.articles.getPublishedArticle, { articleId })
+export function ArticlePage({ shortId }: ArticlePageProps) {
+  const article = useQuery(api.articles.getPublishedArticle, { shortId })
 
   if (article === undefined) return null
 
