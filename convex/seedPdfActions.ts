@@ -56,8 +56,48 @@ async function fetchAr5ivHtml(arxivId: string): Promise<string | undefined> {
     for (const tag of STRIP_TAGS) {
       body.querySelectorAll(tag).forEach((el) => el.remove())
     }
-    // Strip banner/navigation divs
+    // Strip banner/navigation/chrome divs
     body.querySelectorAll('.ltx_page_header, .ltx_page_footer, .ltx_page_logo, .ltx_dates, .ltx_role_affiliationtext').forEach((el) => el.remove())
+
+    // Strip title, authors, abstract (already shown in page header)
+    body.querySelectorAll('.ltx_title_document, .ltx_creator, .ltx_authors, .ltx_abstract').forEach((el) => el.remove())
+
+    // Strip bibliography and appendices
+    body.querySelectorAll('.ltx_bibliography, .ltx_appendix').forEach((el) => el.remove())
+
+    // Strip leading non-section children (LaTeX preamble, macro defs)
+    // These appear as divs/paragraphs before the first <section> containing
+    // raw LaTeX like \NewEnviron, \BODY, etc.
+    const topChildren = body.childNodes
+    for (let i = topChildren.length - 1; i >= 0; i--) {
+      const child = topChildren[i]
+      if (child.nodeType === 1) {
+        const el = child as unknown as ReturnType<typeof root.querySelector>
+        if (!el) continue
+        // Keep section elements (the actual paper content)
+        if (el.rawTagName?.toLowerCase() === 'section') continue
+        // Remove elements before first section that look like preamble
+        const text = el.textContent.trim()
+        if (text.length === 0 || /^[\\{}a-zA-Z\s]*$/.test(text)) {
+          el.remove()
+        }
+      } else if (child.nodeType === 3) {
+        // Remove bare text nodes with LaTeX commands
+        const text = (child as unknown as { rawText: string }).rawText?.trim() ?? ''
+        if (text.length === 0 || /^[\\{}a-zA-Z\s]*$/.test(text)) {
+          child.remove()
+        }
+      }
+    }
+
+    // Also strip sections whose heading contains "Appendix" (some papers
+    // use a regular section instead of \appendix)
+    for (const section of body.querySelectorAll('section')) {
+      const heading = section.querySelector('h1, h2, h3, h4, h5, h6')
+      if (heading && /\bappendix\b/i.test(heading.textContent)) {
+        section.remove()
+      }
+    }
 
     // Strip class/id/data-* attributes, keep only semantic ones
     for (const el of body.querySelectorAll('*')) {
@@ -69,7 +109,9 @@ async function fetchAr5ivHtml(arxivId: string): Promise<string | undefined> {
       }
     }
 
-    const cleaned = body.innerHTML.trim()
+    let cleaned = body.innerHTML.trim()
+
+    cleaned = cleaned.trim()
     if (cleaned.length < 100) {
       console.warn(`[seedPdf] ar5iv HTML too short for ${arxivId} (${cleaned.length} chars)`)
       return undefined
