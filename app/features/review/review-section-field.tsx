@@ -76,20 +76,20 @@ export function ReviewSectionField({
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
-          {wordCount} {wordCount === 1 ? 'word' : 'words'}
-        </span>
-        <Collapsible>
+      <Collapsible>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">
+            {wordCount} {wordCount === 1 ? 'word' : 'words'}
+          </span>
           <CollapsibleTrigger className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             Guidance
             <ChevronDownIcon className="size-3" />
           </CollapsibleTrigger>
-          <CollapsibleContent className="mt-1">
-            <p className="text-xs italic text-muted-foreground">{guidance}</p>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
+        </div>
+        <CollapsibleContent className="mt-1">
+          <p className="text-xs italic text-muted-foreground">{guidance}</p>
+        </CollapsibleContent>
+      </Collapsible>
     </fieldset>
   )
 }
