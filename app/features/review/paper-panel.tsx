@@ -1,6 +1,6 @@
-import * as React from 'react'
 import { DownloadIcon } from 'lucide-react'
 
+import { ExtractedTextContent } from '~/components/extracted-text-content'
 import { ScrollArea } from '~/components/ui/scroll-area'
 import { Skeleton } from '~/components/ui/skeleton'
 
@@ -101,31 +101,5 @@ export function PaperPanel({
         </div>
       </div>
     </ScrollArea>
-  )
-}
-
-/**
- * Renders extracted plain text as paragraphs.
- * Double newlines create paragraph breaks. Single newlines create <br />.
- */
-function ExtractedTextContent({ text }: { text: string }) {
-  const paragraphs = text.split(/\n\n+/)
-
-  return (
-    <>
-      {paragraphs.map((paragraph, i) => {
-        const lines = paragraph.split('\n')
-        return (
-          <p key={i} className="mb-4 last:mb-0">
-            {lines.map((line, j) => (
-              <React.Fragment key={j}>
-                {j > 0 && <br />}
-                {line}
-              </React.Fragment>
-            ))}
-          </p>
-        )
-      })}
-    </>
   )
 }

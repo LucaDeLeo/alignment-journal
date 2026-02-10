@@ -1,12 +1,14 @@
 import { useQuery } from 'convex/react'
-import { TagIcon } from 'lucide-react'
+import { DownloadIcon, TagIcon } from 'lucide-react'
 
 import { api } from '../../../convex/_generated/api'
 
 import { ArticleMetadata } from './article-metadata'
 import { DualAbstractDisplay } from './dual-abstract-display'
+
 import type { Id } from '../../../convex/_generated/dataModel'
 
+import { ExtractedTextContent } from '~/components/extracted-text-content'
 import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
 
@@ -42,6 +44,41 @@ export function ArticlePage({ articleId }: ArticlePageProps) {
         authorAbstract={article.abstract}
         reviewerAbstract={article.reviewerAbstract}
       />
+
+      <Separator className="my-8" />
+
+      <section aria-labelledby="body-heading">
+        <h2
+          id="body-heading"
+          className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground"
+        >
+          Full Text
+        </h2>
+        {article.extractedText ? (
+          <div className="font-serif text-lg leading-[1.7]">
+            <ExtractedTextContent text={article.extractedText} />
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Full text is not available for this article.
+            {article.pdfUrl && (
+              <>
+                {' '}
+                <a
+                  href={article.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  <DownloadIcon className="size-3.5" aria-hidden="true" />
+                  Download the PDF
+                </a>{' '}
+                to read offline.
+              </>
+            )}
+          </p>
+        )}
+      </section>
 
       {article.keywords.length > 0 && (
         <>
