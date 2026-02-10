@@ -146,8 +146,15 @@ function Home() {
             </Badge>
             <p className="mt-1 text-muted-foreground">
               Click <strong className="text-foreground">Run Matching</strong> to
-              score seed reviewer profiles against the paper via LLM. Select
-              reviewers from the results and click{' '}
+              score seed reviewer profiles against the paper via LLM. Results
+              are grouped into{' '}
+              <strong className="text-foreground">
+                great / good / exploring
+              </strong>{' '}
+              tiers, each with per-reviewer strengths and gap analysis. Review
+              the editorial notes with suggested reviewer combinations, then
+              save or dismiss candidates. Filter by tier, select reviewers, and
+              click{' '}
               <strong className="text-foreground">Send Invitations</strong>.
               Watch the invitation panel update with pending status badges.
             </p>
@@ -292,7 +299,25 @@ function Home() {
                   <li>LLM triage reports (scope, formatting, citations, claims)</li>
                   <li>Action editor assignment</li>
                   <li>
-                    LLM-powered reviewer matching (profiles scored against paper)
+                    LLM-powered reviewer matching:
+                    <ul className="ml-4 mt-1 list-[square] space-y-1">
+                      <li>
+                        Tiered results (great / good / exploring) with
+                        per-reviewer strengths and gap analysis
+                      </li>
+                      <li>
+                        Editorial recommendations with suggested reviewer
+                        combinations
+                      </li>
+                      <li>
+                        Save/dismiss reviewers with server-persisted state
+                      </li>
+                      <li>Tier filter tabs and sorted results</li>
+                      <li>
+                        Automatic pre-filtering of unavailable and at-capacity
+                        reviewers
+                      </li>
+                    </ul>
                   </li>
                   <li>Review invitation panel with tokenized email links</li>
                   <li>
@@ -409,8 +434,14 @@ function Home() {
             <CardContent>
               <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
                 <li>
-                  Reviewer pool management: profiles with research areas and
-                  publications
+                  Reviewer pool table with availability status and bio preview
+                </li>
+                <li>
+                  Profile form: research areas, publications, bio, expertise
+                  levels, education, and preferred topics
+                </li>
+                <li>
+                  Availability toggle and max concurrent reviews setting
                 </li>
               </ul>
             </CardContent>
@@ -438,6 +469,10 @@ function Home() {
           <li>
             Semi-confidential review: reviewer anonymity during review,
             configurable post-decision disclosure
+          </li>
+          <li>
+            Tiered LLM reviewer matching with batch processing, retry logic,
+            and editorial strategy notes
           </li>
           <li>
             Diamond Open Access: published articles require no authentication
