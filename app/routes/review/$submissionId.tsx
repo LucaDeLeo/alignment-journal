@@ -61,6 +61,7 @@ function ReviewWorkspacePage() {
   React.useEffect(() => {
     if (
       data &&
+      data.submission.extractedHtml === undefined &&
       data.submission.extractedText === undefined &&
       !extractionTriggered.current
     ) {
@@ -97,6 +98,7 @@ function ReviewWorkspacePage() {
       title={submission.title}
       authors={submission.authors}
       abstract={submission.abstract}
+      extractedHtml={submission.extractedHtml}
       extractedText={submission.extractedText}
       pdfUrl={submission.pdfUrl}
       isExtracting={isExtracting}

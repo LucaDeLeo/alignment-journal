@@ -1,5 +1,6 @@
 import { DownloadIcon } from 'lucide-react'
 
+import { ExtractedHtmlContent } from '~/components/extracted-html-content'
 import { ExtractedTextContent } from '~/components/extracted-text-content'
 import { ScrollArea } from '~/components/ui/scroll-area'
 import { Skeleton } from '~/components/ui/skeleton'
@@ -8,6 +9,7 @@ interface PaperPanelProps {
   title: string
   authors: Array<{ name: string; affiliation: string }>
   abstract: string
+  extractedHtml?: string
   extractedText?: string
   pdfUrl: string | null
   isExtracting: boolean
@@ -21,6 +23,7 @@ export function PaperPanel({
   title,
   authors,
   abstract,
+  extractedHtml,
   extractedText,
   pdfUrl,
   isExtracting,
@@ -72,6 +75,8 @@ export function PaperPanel({
                 <Skeleton className="h-4 w-full skeleton-shimmer" />
                 <Skeleton className="h-4 w-3/4 skeleton-shimmer" />
               </div>
+            ) : extractedHtml ? (
+              <ExtractedHtmlContent html={extractedHtml} />
             ) : extractedText ? (
               <div className="font-serif text-lg leading-[1.7]">
                 <ExtractedTextContent text={extractedText} />

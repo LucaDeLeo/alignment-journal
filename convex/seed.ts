@@ -19,6 +19,15 @@ const DAY_MS = 86_400_000
 /** Sentinel clerkId to detect existing seed data. */
 const SENTINEL_CLERK_ID = 'seed_eic'
 
+/** arXiv papers to fetch at seed time — one per submission. */
+const ARXIV_PAPERS = [
+  { arxivId: '1506.03516', fileName: 'corrigibility.pdf' },
+  { arxivId: '1906.01820', fileName: 'risks-from-learned-optimization.pdf' },
+  { arxivId: '2211.03540', fileName: 'measuring-scalable-oversight.pdf' },
+  { arxivId: '1803.04585', fileName: 'goodhart-law-variants.pdf' },
+  { arxivId: '2211.00593', fileName: 'automated-circuit-discovery.pdf' },
+]
+
 // ---------------------------------------------------------------------------
 // Seed data definitions
 // ---------------------------------------------------------------------------
@@ -138,7 +147,6 @@ function buildSubmissions(
         'robust control',
       ],
       status: 'TRIAGE_COMPLETE' as const,
-      pageCount: 16,
       createdAt: now + DAY_MS,
       updatedAt: now + 5 * DAY_MS,
     },
@@ -166,7 +174,6 @@ function buildSubmissions(
       status: 'UNDER_REVIEW' as const,
       actionEditorId: userIds.ae,
       assignedAt: now + 7 * DAY_MS,
-      pageCount: 22,
       createdAt: now + DAY_MS,
       updatedAt: now + 10 * DAY_MS,
     },
@@ -194,7 +201,6 @@ function buildSubmissions(
       decisionNote:
         'Both reviewers provided strong endorsements. The recursive framework is a significant contribution to the scalable oversight literature, and the logarithmic degradation bound is a novel theoretical result. Minor revisions addressed in discussion.',
       decidedAt: now + 28 * DAY_MS,
-      pageCount: 18,
       createdAt: now + DAY_MS,
       updatedAt: now + 28 * DAY_MS,
     },
@@ -219,7 +225,6 @@ function buildSubmissions(
       decisionNote:
         "While the formalization of Goodhartian failure modes is a useful contribution, both reviewers noted that the theoretical results largely recapitulate known findings without sufficient novelty. The proposed Goodhart-aware optimization procedure lacks empirical validation, and the connection between the formal framework and practical RLHF systems remains underdeveloped. We encourage the author to strengthen the empirical component and resubmit.",
       decidedAt: now + 29 * DAY_MS,
-      pageCount: 14,
       createdAt: now + 2 * DAY_MS,
       updatedAt: now + 29 * DAY_MS,
     },
@@ -248,7 +253,6 @@ function buildSubmissions(
         'Exceptional work identifying alignment-relevant circuits with rigorous methodology. Both reviewers strongly recommend publication. The modularity finding regarding refusal circuits is particularly impactful for the field.',
       decidedAt: now + 30 * DAY_MS,
       publicConversation: true,
-      pageCount: 22,
       createdAt: now + 2 * DAY_MS,
       updatedAt: now + 35 * DAY_MS,
     },
@@ -1671,13 +1675,16 @@ export const cleanupPartialSeed = internalMutation({
       await ctx.db.delete('users', user._id)
     }
 
-    // Delete submissions by seed authors
+    // Delete submissions by seed authors (clean up stored PDFs first)
     const submissions = await ctx.db.query('submissions').collect()
     const seedSubmissions = submissions.filter((s) =>
       seedUserIds.has(s.authorId),
     )
     const seedSubmissionIds = new Set(seedSubmissions.map((s) => s._id))
     for (const sub of seedSubmissions) {
+      if (sub.pdfStorageId) {
+        await ctx.storage.delete(sub.pdfStorageId)
+      }
       await ctx.db.delete('submissions', sub._id)
     }
 
@@ -1731,6 +1738,33 @@ export const cleanupPartialSeed = internalMutation({
 // Batch insert mutations (one per table)
 // ---------------------------------------------------------------------------
 
+export const patchSubmissionPdf = internalMutation({
+  args: {
+    submissionId: v.id('submissions'),
+    pdfStorageId: v.id('_storage'),
+    pdfFileName: v.string(),
+    pdfFileSize: v.number(),
+    pageCount: v.number(),
+    extractedText: v.string(),
+    extractedHtml: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const patch: Record<string, unknown> = {
+      pdfStorageId: args.pdfStorageId,
+      pdfFileName: args.pdfFileName,
+      pdfFileSize: args.pdfFileSize,
+      pageCount: args.pageCount,
+      extractedText: args.extractedText,
+    }
+    if (args.extractedHtml !== undefined) {
+      patch.extractedHtml = args.extractedHtml
+    }
+    await ctx.db.patch('submissions', args.submissionId, patch)
+    return null
+  },
+})
+
 const roleValidator = v.union(
   v.literal('author'),
   v.literal('reviewer'),
@@ -1778,6 +1812,7 @@ export const seedSubmissions = internalMutation({
         assignedAt: v.optional(v.number()),
         decisionNote: v.optional(v.string()),
         decidedAt: v.optional(v.number()),
+        extractedText: v.optional(v.string()),
         pageCount: v.optional(v.number()),
         publicConversation: v.optional(v.boolean()),
         createdAt: v.number(),
@@ -2146,6 +2181,7 @@ export const seedData = internalAction({
       alreadySeeded: v.literal(false),
       users: v.number(),
       submissions: v.number(),
+      pdfs: v.number(),
       triageReports: v.number(),
       reviewerProfiles: v.number(),
       reviews: v.number(),
@@ -2200,6 +2236,17 @@ export const seedData = internalAction({
     const submissionIds: Array<Id<'submissions'>> = await ctx.runMutation(
       internal.seed.seedSubmissions,
       { records: submissionsData },
+    )
+
+    // 2a. Fetch arXiv PDFs, store in Convex, extract text, patch submissions
+    const pdfEntries = ARXIV_PAPERS.map((paper, i) => ({
+      submissionId: submissionIds[i],
+      arxivId: paper.arxivId,
+      fileName: paper.fileName,
+    }))
+    const pdfCount: number = await ctx.runAction(
+      internal.seedPdfActions.uploadArxivPdfs,
+      { entries: pdfEntries },
     )
 
     // 3. Triage reports (all 5 submissions)
@@ -2348,6 +2395,7 @@ export const seedData = internalAction({
       alreadySeeded: false as const,
       users: userIds.length,
       submissions: submissionIds.length,
+      pdfs: pdfCount,
       triageReports: triageIds.length,
       reviewerProfiles: profileIds.length,
       reviews: reviewIds.length,

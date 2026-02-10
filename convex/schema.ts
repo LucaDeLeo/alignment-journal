@@ -33,6 +33,7 @@ export default defineSchema({
     pdfFileSize: v.optional(v.number()),
     pageCount: v.optional(v.number()),
     extractedText: v.optional(v.string()),
+    extractedHtml: v.optional(v.string()),
     actionEditorId: v.optional(v.id('users')),
     assignedAt: v.optional(v.number()),
     decisionNote: v.optional(v.string()),

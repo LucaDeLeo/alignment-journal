@@ -8,6 +8,7 @@ import { DualAbstractDisplay } from './dual-abstract-display'
 
 import type { Id } from '../../../convex/_generated/dataModel'
 
+import { ExtractedHtmlContent } from '~/components/extracted-html-content'
 import { ExtractedTextContent } from '~/components/extracted-text-content'
 import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
@@ -54,7 +55,9 @@ export function ArticlePage({ articleId }: ArticlePageProps) {
         >
           Full Text
         </h2>
-        {article.extractedText ? (
+        {article.extractedHtml ? (
+          <ExtractedHtmlContent html={article.extractedHtml} />
+        ) : article.extractedText ? (
           <div className="font-serif text-lg leading-[1.7]">
             <ExtractedTextContent text={article.extractedText} />
           </div>

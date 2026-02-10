@@ -30,6 +30,7 @@ import type * as preCheckActions from "../preCheckActions.js";
 import type * as reviewerAbstracts from "../reviewerAbstracts.js";
 import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
+import type * as seedPdfActions from "../seedPdfActions.js";
 import type * as storage from "../storage.js";
 import type * as submissions from "../submissions.js";
 import type * as triage from "../triage.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   reviewerAbstracts: typeof reviewerAbstracts;
   reviews: typeof reviews;
   seed: typeof seed;
+  seedPdfActions: typeof seedPdfActions;
   storage: typeof storage;
   submissions: typeof submissions;
   triage: typeof triage;
