@@ -62,8 +62,60 @@ export const Route = createRootRouteWithContext<{
       {
         title: 'Alignment Journal',
       },
+      {
+        name: 'description',
+        content:
+          'A peer-reviewed journal for theoretical AI alignment research, featuring LLM-assisted editorial triage and open reviewer abstracts.',
+      },
+      // Open Graph
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+      {
+        property: 'og:title',
+        content: 'Alignment Journal',
+      },
+      {
+        property: 'og:description',
+        content:
+          'A peer-reviewed journal for theoretical AI alignment research, featuring LLM-assisted editorial triage and open reviewer abstracts.',
+      },
+      {
+        property: 'og:site_name',
+        content: 'Alignment Journal',
+      },
+      // Twitter / X
+      {
+        name: 'twitter:card',
+        content: 'summary',
+      },
+      {
+        name: 'twitter:title',
+        content: 'Alignment Journal',
+      },
+      {
+        name: 'twitter:description',
+        content:
+          'A peer-reviewed journal for theoretical AI alignment research, featuring LLM-assisted editorial triage and open reviewer abstracts.',
+      },
     ],
     links: [
+      // Preload primary fonts to eliminate FOUT
+      {
+        rel: 'preload',
+        href: '/fonts/satoshi/Satoshi-Variable.woff2',
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous',
+      },
+      {
+        rel: 'preload',
+        href: '/fonts/jetbrains-mono/JetBrainsMono-Variable.woff2',
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous',
+      },
       { rel: 'stylesheet', href: appCss },
       {
         rel: 'preconnect',
@@ -79,6 +131,8 @@ export const Route = createRootRouteWithContext<{
         href: 'https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap',
       },
       { rel: 'icon', href: '/favicon.ico' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
+      { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
     ],
   }),
   beforeLoad: async (ctx) => {

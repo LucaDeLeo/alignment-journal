@@ -23,3 +23,9 @@ dist/
 *.swp
 *.swo
 .vercel
+
+# Test coverage
+coverage/
+
+# BMAD knowledge base
+_bmad/
