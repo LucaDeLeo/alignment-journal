@@ -39,10 +39,10 @@ const triageResultSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const allTriageResultsSchema = z.object({
-  scope: triageResultSchema.describe('Scope fit analysis'),
-  formatting: triageResultSchema.describe('Formatting and completeness analysis'),
-  citations: triageResultSchema.describe('Citation quality analysis'),
-  claims: triageResultSchema.describe('Technical claims and evidence analysis'),
+  scope: triageResultSchema,
+  formatting: triageResultSchema,
+  citations: triageResultSchema,
+  claims: triageResultSchema,
 })
 
 // ---------------------------------------------------------------------------
@@ -127,9 +127,10 @@ export const runTriage = internalAction({
       const truncatedText = extractedText.slice(0, MAX_TEXT_LENGTH)
 
       const { object: results } = await generateObject({
-        model: anthropic('claude-haiku-4-5-20251001'),
+        model: anthropic('claude-sonnet-4-5-20250929'),
         schema: allTriageResultsSchema,
         system: SYSTEM_PROMPT,
+        maxTokens: 8192,
         prompt: `Analyze the following paper:\n\n${truncatedText}`,
       })
 

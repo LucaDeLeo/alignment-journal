@@ -51,10 +51,16 @@ export function TriageDisplay({
         Triage Analysis
       </h2>
       {isInProgress ? (
-        <TriageProgressIndicator
-          reports={reports}
-          progress={progress}
-        />
+        <>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Analyzing paper across four dimensions. This may take a minute or
+            two.
+          </p>
+          <TriageProgressIndicator
+            reports={reports}
+            progress={progress}
+          />
+        </>
       ) : (
         <div className="space-y-3">
           {reports.map((report, index) => (
