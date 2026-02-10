@@ -166,7 +166,11 @@ function Home() {
               reviewer
             </Badge>
             <p className="mt-1 text-muted-foreground">
-              Switch to{' '}
+              On the submission detail page (as editor), click{' '}
+              <strong className="text-foreground">
+                Assign Myself as Reviewer
+              </strong>{' '}
+              to create a review assignment for your own account. Then switch to{' '}
               <Badge variant="outline" className="mx-0.5 text-xs">
                 reviewer
               </Badge>{' '}
@@ -174,16 +178,10 @@ function Home() {
               <Link to="/review" className="text-primary hover:underline">
                 /review
               </Link>
-              . The seed data includes pre-assigned reviews you can open. Try
-              the split-pane workspace: paper on the left, structured review
+              . You&apos;ll see your new assignment alongside any seed reviews.
+              Try the split-pane workspace: paper on the left, structured review
               form on the right (with auto-save). Check the discussion thread,
               abstract drafting, and payment calculator.
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground/70">
-              Note: invitations target specific seed reviewer profiles, so you
-              won&apos;t see the paper you just submitted here. The seed reviews
-              let you experience the full review workspace on pre-loaded
-              submissions.
             </p>
           </li>
 

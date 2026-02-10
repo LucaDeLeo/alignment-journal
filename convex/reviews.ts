@@ -4,6 +4,7 @@ import { internal } from './_generated/api'
 import { internalMutation, mutation, query } from './_generated/server'
 import { withReviewer, withUser } from './helpers/auth'
 import {
+  environmentMisconfiguredError,
   notFoundError,
   unauthorizedError,
   validationError,
@@ -370,4 +371,76 @@ export const lockReview = internalMutation({
 
     return null
   },
+})
+
+/**
+ * Demo-only: assigns the current user as a reviewer on a submission.
+ * Gated by DEMO_ROLE_SWITCHER env var (same guard as switchRole).
+ * Allows a single account to walk the full editorial pipeline end-to-end.
+ */
+export const assignSelfAsReviewer = mutation({
+  args: { submissionId: v.id('submissions') },
+  returns: v.null(),
+  handler: withUser(
+    async (
+      ctx: MutationCtx & { user: Doc<'users'> },
+      args: { submissionId: Id<'submissions'> },
+    ) => {
+      if (!process.env.DEMO_ROLE_SWITCHER) {
+        throw environmentMisconfiguredError(
+          'Self-assign reviewer is disabled in production',
+        )
+      }
+
+      const submission = await ctx.db.get('submissions', args.submissionId)
+      if (!submission) {
+        throw notFoundError('Submission')
+      }
+
+      if (
+        submission.status !== 'TRIAGE_COMPLETE' &&
+        submission.status !== 'UNDER_REVIEW'
+      ) {
+        throw validationError(
+          'Submission must be in TRIAGE_COMPLETE or UNDER_REVIEW status',
+        )
+      }
+
+      const existing = await ctx.db
+        .query('reviews')
+        .withIndex('by_submissionId_reviewerId', (q) =>
+          q
+            .eq('submissionId', args.submissionId)
+            .eq('reviewerId', ctx.user._id),
+        )
+        .unique()
+
+      if (existing) {
+        throw validationError(
+          'You already have a review assigned for this submission',
+        )
+      }
+
+      const now = Date.now()
+      await ctx.db.insert('reviews', {
+        submissionId: args.submissionId,
+        reviewerId: ctx.user._id,
+        sections: {},
+        status: 'assigned',
+        revision: 0,
+        createdAt: now,
+        updatedAt: now,
+      })
+
+      await ctx.scheduler.runAfter(0, internal.audit.logAction, {
+        submissionId: args.submissionId,
+        actorId: ctx.user._id,
+        actorRole: ctx.user.role,
+        action: 'assign_self_reviewer',
+        details: 'Demo: self-assigned as reviewer',
+      })
+
+      return null
+    },
+  ),
 })

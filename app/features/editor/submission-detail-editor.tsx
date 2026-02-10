@@ -1,4 +1,4 @@
-import { useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import {
   ArrowLeft,
   CalendarIcon,
@@ -6,9 +6,11 @@ import {
   DownloadIcon,
   FileTextIcon,
   TagIcon,
+  UserPlusIcon,
   UsersIcon,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
+import { toast } from 'sonner'
 
 import { api } from '../../../convex/_generated/api'
 import { formatDate } from '../submissions/status-utils'
@@ -27,7 +29,11 @@ import { StatusTransitionChip } from './status-transition-chip'
 import type { Id } from '../../../convex/_generated/dataModel'
 
 import { Badge } from '~/components/ui/badge'
+import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
+
+const showDemoFeatures =
+  import.meta.env.DEV || !!import.meta.env.VITE_SHOW_ROLE_SWITCHER
 
 interface EditorSubmissionDetailProps {
   submissionId: Id<'submissions'>
@@ -227,6 +233,13 @@ export function EditorSubmissionDetail({
         </section>
       )}
 
+      {/* Quick-assign self as reviewer (dev/demo only) */}
+      {showDemoFeatures &&
+        (submission.status === 'TRIAGE_COMPLETE' ||
+          submission.status === 'UNDER_REVIEW') && (
+          <QuickAssignButton submissionId={submission._id} />
+        )}
+
       {/* Payment Summary — renders when reviews exist */}
       <PaymentSummaryTable submissionId={submissionId} />
 
@@ -261,6 +274,42 @@ export function EditorSubmissionDetail({
           <StatusTimeline currentStatus={submission.status} />
         </div>
       </aside>
+    </div>
+  )
+}
+
+function QuickAssignButton({
+  submissionId,
+}: {
+  submissionId: Id<'submissions'>
+}) {
+  const assignSelf = useMutation(api.reviews.assignSelfAsReviewer)
+
+  async function handleClick() {
+    try {
+      await assignSelf({ submissionId })
+      toast.success(
+        'Assigned yourself as reviewer. Switch to reviewer role to see it.',
+      )
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to assign'
+      toast.error(message)
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleClick}
+        className="gap-1.5"
+      >
+        <UserPlusIcon className="size-3.5" />
+        Assign Myself as Reviewer
+      </Button>
+      <p className="mt-1 text-xs text-muted-foreground">(dev only)</p>
     </div>
   )
 }
