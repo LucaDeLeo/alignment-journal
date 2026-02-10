@@ -99,6 +99,17 @@ async function fetchAr5ivHtml(arxivId: string): Promise<string | undefined> {
       }
     }
 
+    // Rewrite relative image src to absolute ar5iv URLs
+    const ar5ivBase = `https://ar5iv.labs.arxiv.org`
+    for (const img of body.querySelectorAll('img')) {
+      const src = img.getAttribute('src')
+      if (src && src.startsWith('/')) {
+        img.setAttribute('src', `${ar5ivBase}${src}`)
+      } else if (src && !src.startsWith('http')) {
+        img.setAttribute('src', `${ar5ivBase}/html/${arxivId}/${src}`)
+      }
+    }
+
     // Strip class/id/data-* attributes, keep only semantic ones
     for (const el of body.querySelectorAll('*')) {
       const attrs = el.attributes
