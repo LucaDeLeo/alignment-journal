@@ -16,8 +16,6 @@ import { internal } from './_generated/api'
 const MAX_ATTEMPTS = 3
 const MAX_TEXT_LENGTH = 100_000
 
-const PASS_NAMES = ['scope', 'formatting', 'citations', 'claims'] as const
-
 // ---------------------------------------------------------------------------
 // Zod schema for a single triage dimension
 // ---------------------------------------------------------------------------
@@ -37,55 +35,41 @@ const triageResultSchema = z.object({
 })
 
 // ---------------------------------------------------------------------------
-// Per-dimension system prompts
+// Combined schema: all 4 dimensions in a single LLM call
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPTS: Record<(typeof PASS_NAMES)[number], string> = {
-  scope: `You are a triage assistant for the Alignment Journal, a peer-reviewed journal focused on theoretical AI alignment research. Analyze the following paper text and assess its scope fit.
+const allTriageResultsSchema = z.object({
+  scope: triageResultSchema.describe('Scope fit analysis'),
+  formatting: triageResultSchema.describe('Formatting and completeness analysis'),
+  citations: triageResultSchema.describe('Citation quality analysis'),
+  claims: triageResultSchema.describe('Technical claims and evidence analysis'),
+})
 
+// ---------------------------------------------------------------------------
+// System prompt: single combined prompt for all 4 dimensions
+// ---------------------------------------------------------------------------
+
+const SYSTEM_PROMPT = `You are a triage assistant for the Alignment Journal, a peer-reviewed journal focused on theoretical AI alignment research. Analyze the following paper across four dimensions and return structured results for each.
+
+## 1. Scope Fit
 The journal's focus areas are:
 - Theoretical AI alignment: agency, understanding, asymptotic behavior of advanced synthetic agents
 - Conceptual and mathematically abstract ideas transcending contemporary architectures
 - Empirical work is welcome but no emphasis on SOTA benchmarks
 - Out of scope: AI governance, deployment, applied mechinterp, evaluations, societal impact
+Assess whether the paper falls within scope based on its core thesis, methodology, and contribution area.
 
-Assess whether the paper falls within scope. Consider the paper's core thesis, methodology, and contribution area.`,
+## 2. Formatting & Completeness
+Check for: abstract present and well-structured, clear section structure (introduction, related work, methodology, results/analysis, conclusion), references section present and formatted, page numbers, author affiliations, figures/tables referenced in text.
 
-  formatting: `You are a triage assistant for the Alignment Journal. Analyze the following paper text for formatting and completeness issues.
+## 3. Citation Quality
+Check for: key citations referenced, incomplete citations (missing year, venue, or author), unresolvable citations (non-standard format), approximate total citation count.
 
-Check for:
-- Abstract present and well-structured
-- Clear section structure (introduction, related work, methodology, results/analysis, conclusion)
-- References section present and formatted
-- Page numbers present
-- Author affiliations included
-- Figures/tables referenced in text
-
-Report any formatting or completeness issues found.`,
-
-  citations: `You are a triage assistant for the Alignment Journal. Analyze the following paper text for citation quality.
-
-Check for:
-- Extract key citations referenced in the paper
-- Flag any citations that appear incomplete (missing year, venue, or author)
-- Identify citations that may be unresolvable (non-standard format, missing from common databases)
-- Note the total approximate citation count
-
-Report on citation quality and any issues found.`,
-
-  claims: `You are a triage assistant for the Alignment Journal. Analyze the following paper text for technical claims and evidence quality.
-
-Check for:
-- Identify the key technical claims made by the paper (2-5 main claims)
-- For each claim, assess whether the paper provides supporting evidence, proofs, or arguments
-- Flag claims that appear unsupported or under-argued
-- Note whether the methodology is clearly described and reproducible
-
-Report on the quality of the paper's technical argumentation.`,
-}
+## 4. Claims & Evidence
+Identify the key technical claims (2-5 main claims), assess whether each has supporting evidence/proofs/arguments, flag unsupported or under-argued claims, note whether methodology is clearly described and reproducible.`
 
 // ---------------------------------------------------------------------------
-// Single triage action: extracts text once, runs all 4 analyses sequentially
+// Single triage action: extracts text once, analyzes all 4 dimensions in one LLM call
 // ---------------------------------------------------------------------------
 
 export const runTriage = internalAction({
@@ -139,22 +123,15 @@ export const runTriage = internalAction({
         return null
       }
 
-      // 4. Truncate text, then run all 4 analyses sequentially
+      // 4. Truncate text, then run a single LLM call for all 4 dimensions
       const truncatedText = extractedText.slice(0, MAX_TEXT_LENGTH)
-      const results = {} as Record<
-        (typeof PASS_NAMES)[number],
-        z.infer<typeof triageResultSchema>
-      >
 
-      for (const passName of PASS_NAMES) {
-        const { object } = await generateObject({
-          model: anthropic('claude-haiku-4-5-20251001'),
-          schema: triageResultSchema,
-          system: SYSTEM_PROMPTS[passName],
-          prompt: `Analyze the following paper:\n\n${truncatedText}`,
-        })
-        results[passName] = object
-      }
+      const { object: results } = await generateObject({
+        model: anthropic('claude-haiku-4-5-20251001'),
+        schema: allTriageResultsSchema,
+        system: SYSTEM_PROMPT,
+        prompt: `Analyze the following paper:\n\n${truncatedText}`,
+      })
 
       // 5. Write all 4 results + transition to TRIAGE_COMPLETE
       await ctx.runMutation(internal.triage.writeAllResults, {
@@ -165,8 +142,8 @@ export const runTriage = internalAction({
       })
     } catch (error) {
       if (attempt < MAX_ATTEMPTS) {
-        // Retry with exponential backoff
-        const delayMs = 1000 * Math.pow(2, attempt - 1)
+        // Retry with exponential backoff (30s base for rate limits)
+        const delayMs = 30_000 * Math.pow(2, attempt - 1)
         await ctx.scheduler.runAfter(delayMs, internal.triageActions.runTriage, {
           ...args,
           attemptCount: attempt + 1,
